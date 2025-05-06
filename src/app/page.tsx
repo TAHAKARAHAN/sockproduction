@@ -1,103 +1,125 @@
+"use client";
 import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import Cookies from 'js-cookie';
+import { useRouter } from "next/navigation";
+import AuthCheck from "@/components/AuthCheck";
+
+function HomePage() {
+  const [userName, setUserName] = useState("Admin");
+  const router = useRouter();
+  
+  useEffect(() => {
+    // Get username from cookie if available
+    const userEmail = Cookies.get('userEmail');
+    if (userEmail) {
+      // Extract username from email (before @)
+      const name = userEmail.split('@')[0];
+      setUserName(name.charAt(0).toUpperCase() + name.slice(1));
+    }
+  }, []);
+
+  return (
+    <div className="p-8">
+      <header className="mb-12 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Çorap Denetim ve Üretim Paneli</h1>
+          <p className="text-gray-500 mt-2">Hoş geldiniz, {userName}. Yapacağınız işlemi seçin.</p>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <DashboardCard 
+          title="Ürün Kimliği" 
+          description="Ürün kimlik bilgilerini görüntüleyin veya yeni ürün kimliği oluşturun." 
+          icon="/product-icon.svg"
+          href="/urun-kimligi"
+          color="bg-blue-50 dark:bg-blue-950"
+        />
+        <DashboardCard 
+          title="Numuneler" 
+          description="Numune siparişlerini ve durumlarını takip edin." 
+          icon="/sample-icon.svg"
+          href="/numuneler"
+          color="bg-green-50 dark:bg-green-950"
+        />
+        <DashboardCard 
+          title="Siparişler" 
+          description="Aktif siparişleri görüntüleyin ve yönetin." 
+          icon="/order-icon.svg"
+          href="/siparisler"
+          color="bg-purple-50 dark:bg-purple-950"
+        />
+        <DashboardCard 
+          title="Üretim Takibi" 
+          description="Üretim süreçlerini ve durumlarını izleyin." 
+          icon="/production-icon.svg"
+          href="/uretim-takibi"
+          color="bg-amber-50 dark:bg-amber-950"
+        />
+        <DashboardCard 
+          title="Kullanıcı Yönetimi" 
+          description="Kullanıcı hesaplarını ve yetkilerini yönetin." 
+          icon="/user-icon.svg"
+          href="/kullanicilar"
+          color="bg-red-50 dark:bg-red-950"
+        />
+        <DashboardCard 
+          title="Raporlar" 
+          description="Üretim ve sipariş raporlarını görüntüleyin." 
+          icon="/report-icon.svg"
+          href="/raporlar"
+          color="bg-cyan-50 dark:bg-cyan-950"
+        />
+      </div>
+    </div>
+  );
+}
+
+interface DashboardCardProps {
+  title: string;
+  description: string;
+  icon: string;
+  href: string;
+  color: string;
+}
+
+function DashboardCard({ title, description, icon, href, color }: DashboardCardProps) {
+  return (
+    <Link href={href} className={`rounded-lg p-6 ${color} border border-gray-200 dark:border-gray-700 transition-transform hover:scale-105`}>
+      <div className="flex flex-col h-full">
+        <div className="mb-4">
+          {/* Fallback to a colored div if icon is not available */}
+          {icon ? (
+            <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center">
+              <Image src={icon} width={24} height={24} alt={title} />
+            </div>
+          ) : (
+            <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center">
+              <span className="text-xl font-bold">{title.charAt(0)}</span>
+            </div>
+          )}
+        </div>
+        <h2 className="text-xl font-semibold mb-2">{title}</h2>
+        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">{description}</p>
+        <div className="mt-auto">
+          <span className="inline-flex items-center text-sm font-medium">
+            Görüntüle
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+    <AuthCheck>
+      <HomePage />
+    </AuthCheck>
   );
 }
