@@ -88,10 +88,6 @@ const FinalSummary = ({ formState }: FinalSummaryProps) => {
               <div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <div className="font-bold">Composition</div>
-                    <div>{formState.styleComposition || "33% wool 31% cotton (sustainable) 21% polyamide 13% silk 2% elastane (LYCRA)"}</div>
-                  </div>
-                  <div>
                     <div className="font-bold">Weight</div>
                     <div>45</div>
                   </div>

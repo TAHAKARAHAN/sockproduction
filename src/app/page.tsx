@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import Cookies from 'js-cookie';
 import { useRouter } from "next/navigation";
-import AuthCheck from "@/components/AuthCheck";
 
 function HomePage() {
   const [userName, setUserName] = useState("Admin");
@@ -116,10 +115,4 @@ function DashboardCard({ title, description, icon, href, color }: DashboardCardP
   );
 }
 
-export default function Home() {
-  return (
-    <AuthCheck>
-      <HomePage />
-    </AuthCheck>
-  );
-}
+export default HomePage;

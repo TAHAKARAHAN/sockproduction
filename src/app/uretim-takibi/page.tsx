@@ -1,8 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
-// Production status types - removed Üretim
+// Production status types
 type ProductionStatus = 
   | "Burun Dikişi"
   | "Yıkama"
@@ -10,83 +10,21 @@ type ProductionStatus =
   | "Paketleme"
   | "Tamamlandı";
 
-// Sample data for production batches
-const initialProductions = [
-  {
-    id: "P001",
-    styleNo: "77597",
-    urunAdi: "L-Wool Socks with Silk",
-    siparisId: "S235",
-    musteri: "ECC Legwear",
-    miktar: 1200,
-    baslangicTarihi: "10.04.2023",
-    tahminiTamamlanma: "10.05.2023",
-    durum: "Yıkama" as ProductionStatus,
-    tamamlanma: 70
-  },
-  {
-    id: "P002",
-    styleNo: "77598",
-    urunAdi: "Cotton Socks",
-    siparisId: "S236",
-    musteri: "Atlas Textiles",
-    miktar: 800,
-    baslangicTarihi: "15.04.2023",
-    tahminiTamamlanma: "15.05.2023",
-    durum: "Burun Dikişi" as ProductionStatus,
-    tamamlanma: 45
-  },
-  {
-    id: "P003",
-    styleNo: "77599",
-    urunAdi: "Sport Socks",
-    siparisId: "S237",
-    musteri: "Yıldız Çorap",
-    miktar: 2000,
-    baslangicTarihi: "20.04.2023",
-    tahminiTamamlanma: "20.05.2023",
-    durum: "Burun Dikişi" as ProductionStatus,
-    tamamlanma: 30
-  },
-  {
-    id: "P004",
-    styleNo: "77600",
-    urunAdi: "Bamboo Socks",
-    siparisId: "S238",
-    musteri: "Merteks Tekstil",
-    miktar: 500,
-    baslangicTarihi: "25.04.2023",
-    tahminiTamamlanma: "25.05.2023",
-    durum: "Burun Dikişi" as ProductionStatus, // Changed from "Hammadde Girişi"
-    tamamlanma: 10
-  },
-  {
-    id: "P005",
-    styleNo: "77601",
-    urunAdi: "Woolen Winter Socks",
-    siparisId: "S239",
-    musteri: "Nordic Brands",
-    miktar: 1500,
-    baslangicTarihi: "02.04.2023",
-    tahminiTamamlanma: "05.05.2023",
-    durum: "Paketleme" as ProductionStatus,
-    tamamlanma: 90
-  },
-  {
-    id: "P006",
-    styleNo: "77602",
-    urunAdi: "Kids Colorful Socks",
-    siparisId: "S240",
-    musteri: "Kids Fashion",
-    miktar: 1000,
-    baslangicTarihi: "05.04.2023",
-    tahminiTamamlanma: "08.05.2023",
-    durum: "Tamamlandı" as ProductionStatus,
-    tamamlanma: 100
-  }
-];
+// Production interface
+interface Production {
+  id: string;
+  styleNo: string;
+  urunAdi: string;
+  siparisId: string;
+  musteri: string;
+  miktar: number;
+  baslangicTarihi: string;
+  tahminiTamamlanma: string;
+  durum: ProductionStatus;
+  tamamlanma: number;
+}
 
-// Status color mapping for visual indication - removed Üretim
+// Status color mapping for visual indication
 const statusColors = {
   "Burun Dikişi": "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
   "Yıkama": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300",
@@ -96,9 +34,42 @@ const statusColors = {
 };
 
 export default function UretimTakibiPage() {
-  const [productions, setProductions] = useState(initialProductions);
+  const [productions, setProductions] = useState<Production[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<ProductionStatus | "">("");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Fetch production data - replace hardcoded data with API call
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      if (!isMounted) return;
+      setLoading(true);
+      
+      try {
+        // In a real application, this would be an API call
+        // const response = await fetch('/api/uretim-takibi');
+        // const data = await response.json();
+        
+        // For now, use empty array since we want to avoid hardcoded data
+        // This should be replaced with actual API calls when ready
+        setProductions([]);
+        setLoading(false);
+        
+      } catch (err: any) {
+        console.error("Error fetching production data:", err);
+        setError("Üretim bilgileri yüklenirken bir hata oluştu.");
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredProductions = productions.filter(production => {
     const matchesStatus = filterStatus === "" || production.durum === filterStatus;
@@ -116,11 +87,7 @@ export default function UretimTakibiPage() {
     total: productions.length,
     inProgress: productions.filter(p => p.durum !== "Tamamlandı").length,
     completed: productions.filter(p => p.durum === "Tamamlandı").length,
-    atRisk: productions.filter(p => {
-      // This is a placeholder logic for "at risk" - in a real app, you'd have more complex criteria
-      // For now, we'll consider items with less than 50% completion as "at risk"
-      return p.tamamlanma < 50 && p.durum !== "Tamamlandı";
-    }).length
+    atRisk: productions.filter(p => p.tamamlanma < 50 && p.durum !== "Tamamlandı").length
   };
 
   return (
@@ -246,48 +213,74 @@ export default function UretimTakibiPage() {
         {/* Production Table */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transition-all">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-700">
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Üretim ID
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Ürün Bilgisi
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Sipariş ID
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Müşteri
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Miktar
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Durum
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    İlerleme
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    İşlemler
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredProductions.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                      <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                      </svg>
-                      <p className="text-lg font-medium mb-1">Üretim kaydı bulunamadı</p>
-                      <p>Filtreleri temizlemeyi veya yeni bir üretim kaydı oluşturmayı deneyin</p>
-                    </td>
+            {loading ? (
+              <div className="p-8 flex flex-col items-center justify-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                <p className="text-gray-600 dark:text-gray-400 mb-1">Üretim bilgileri yükleniyor...</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500">Bu işlem birkaç saniye sürebilir.</p>
+              </div>
+            ) : error ? (
+              <div className="p-8 text-center">
+                <div className="inline-block bg-red-100 dark:bg-red-900/30 p-4 rounded-lg mb-4 text-red-700 dark:text-red-400">
+                  <p className="font-medium">{error}</p>
+                  <p className="text-sm mt-2">Veritabanına bağlanılamadı. Lütfen internet bağlantınızı kontrol edin ve sayfayı yenileyin.</p>
+                </div>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Yeniden Dene
+                </button>
+              </div>
+            ) : filteredProductions.length === 0 ? (
+              <div className="p-12 text-center">
+                <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                <p className="text-lg font-medium mb-1">Üretim kaydı bulunamadı</p>
+                <p className="mb-4">Yeni bir üretim kaydı oluşturun</p>
+                <Link
+                  href="/uretim-takibi/yeni"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Yeni Üretim Kaydı Ekle
+                </Link>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-700">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Üretim ID
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Ürün Bilgisi
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Sipariş ID
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Müşteri
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Miktar
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Durum
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      İlerleme
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      İşlemler
+                    </th>
                   </tr>
-                ) : (
-                  filteredProductions.map((production) => (
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredProductions.map((production) => (
                     <tr key={production.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Link href={`/uretim-takibi/${production.id}`} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors">
@@ -343,32 +336,10 @@ export default function UretimTakibiPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          <div className="bg-white dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                <span className="font-medium">{filteredProductions.length}</span> sonuçtan <span className="font-medium">1</span> ile <span className="font-medium">{filteredProductions.length}</span> arası gösteriliyor
-              </p>
-              <div className="flex items-center space-x-2">
-                <button className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" disabled>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                <div className="px-4 py-2 border border-blue-500 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-lg">1</div>
-                <button className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" disabled>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>

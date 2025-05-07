@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 interface BasicInfoProps {
   formState: any;
@@ -9,8 +9,6 @@ const BasicInfo = ({ formState, handleInputChange }: BasicInfoProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
-        <h2 className="text-lg font-medium mb-4">Temel Bilgiler</h2>
-        
         <div className="mb-4">
           <label htmlFor="uretici" className="block text-sm font-medium mb-1">Üretici</label>
           <select
@@ -22,67 +20,35 @@ const BasicInfo = ({ formState, handleInputChange }: BasicInfoProps) => {
             required
           >
             <option value="">Seçiniz</option>
-            <option value="MERTEKS TEKSTİL">MERTEKS TEKSTİL</option>
-            <option value="ATLAS TEKSTİL">ATLAS TEKSTİL</option>
-            <option value="YILDIZ ÇORAP">YILDIZ ÇORAP</option>
+            {formState.uretici === "Manuel Giriş" && (
+              <option value="Manuel Giriş">Manuel Giriş</option>
+            )}
           </select>
+          {formState.uretici === "Manuel Giriş" && (
+            <input
+              type="text"
+              name="ureticiManuel"
+              placeholder="Üretici adını giriniz"
+              className="w-full mt-2 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              value={formState.ureticiManuel || ""}
+              onChange={handleInputChange}
+            />
+          )}
         </div>
-        
+
         <div className="mb-4">
-          <label htmlFor="malCinsi" className="block text-sm font-medium mb-1">Malın Cinsi</label>
+          <label htmlFor="style_no" className="block text-sm font-medium mb-1">Style No</label>
           <input
             type="text"
-            id="malCinsi"
-            name="malCinsi"
-            value={formState.malCinsi}
+            id="style_no"
+            name="style_no"
+            value={formState.style_no}
             onChange={handleInputChange}
             className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
             required
           />
         </div>
-        
-        <div className="mb-4">
-          <label htmlFor="styleNo" className="block text-sm font-medium mb-1">Style No</label>
-          <input
-            type="text"
-            id="styleNo"
-            name="styleNo"
-            value={formState.styleNo}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
-            required
-          />
-        </div>
-        
-        <div className="mb-4">
-          <label htmlFor="adet" className="block text-sm font-medium mb-1">Adet</label>
-          <input
-            type="number"
-            id="adet"
-            name="adet"
-            value={formState.adet}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
-            required
-          />
-        </div>
-      </div>
-      
-      <div>
-        <h2 className="text-lg font-medium mb-4">Teknik Bilgiler</h2>
-        
-        <div className="mb-4">
-          <label htmlFor="iplik" className="block text-sm font-medium mb-1">İplik</label>
-          <input
-            type="text"
-            id="iplik"
-            name="iplik"
-            value={formState.iplik}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
-          />
-        </div>
-        
+
         <div className="mb-4">
           <label htmlFor="burun" className="block text-sm font-medium mb-1">Burun</label>
           <input
@@ -94,20 +60,7 @@ const BasicInfo = ({ formState, handleInputChange }: BasicInfoProps) => {
             className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
           />
         </div>
-        
-        <div className="mb-4">
-          <label htmlFor="termin" className="block text-sm font-medium mb-1">Termin Tarihi</label>
-          <input
-            type="date"
-            id="termin"
-            name="termin"
-            value={formState.termin}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
-            required
-          />
-        </div>
-        
+
         <div className="mb-4">
           <label htmlFor="not" className="block text-sm font-medium mb-1">Notlar</label>
           <textarea

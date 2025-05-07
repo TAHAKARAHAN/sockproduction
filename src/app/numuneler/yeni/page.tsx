@@ -36,7 +36,6 @@ export default function YeniNumunePage() {
     weltType: "",
     gauge: "",
     toeClosing: "",
-    styleComposition: "",
     zeminIplikleri: [
       { id: '1-8', description: '', ilkOlcum: '', sonOlcum: '', toplam: '' },
       { id: '1-7', description: '', ilkOlcum: '', sonOlcum: '', toplam: '' },
@@ -125,7 +124,7 @@ export default function YeniNumunePage() {
     }));
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -468,21 +467,6 @@ export default function YeniNumunePage() {
                   <option value="comfort">comfort</option>
                 </select>
               </div>
-            </div>
-          </div>
-          
-          <div className="mt-6">
-            <div className="mb-4">
-              <label htmlFor="styleComposition" className="block text-sm font-medium mb-1">Style Composition Sales Main</label>
-              <textarea
-                id="styleComposition"
-                name="styleComposition"
-                rows={3}
-                value={formData.styleComposition}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
-                placeholder="33% WOOL, 31% COTTON, 21% POLYAMIDE, 13% SILK, 2% ELASTANE"
-              ></textarea>
             </div>
           </div>
         </div>

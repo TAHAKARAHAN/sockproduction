@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import TechnicalSpecs from "@/components/urun-kimligi/TechnicalSpecs";
 import BomSection from "@/components/urun-kimligi/BomSection";
 import ProductSummary from "@/components/urun-kimligi/ProductSummary";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { useRouter } from "next/navigation";
 
 // Define the interfaces for our form state types
 interface BomItem {
@@ -24,7 +25,10 @@ interface FormState {
   weltType: string;
   gauge: string;
   toeClosing: string;
-  styleComposition: string;
+  uretici: string; // Manufacturer field
+  
+  // Basic info fields
+  style_no: string;
   
   // BOM section
   bomItems: BomItem[];
@@ -94,6 +98,14 @@ interface FormState {
 
 export default function CreateProductIdentityPage() {
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Generate random style number in format ST-XXXXXX
+  const generateStyleNumber = () => {
+    const randomNum = Math.floor(100000 + Math.random() * 900000); // Random 6-digit number
+    return `ST-${randomNum}`;
+  };
+
+  // Initialize form state with a generated style number
   const [formState, setFormState] = useState<FormState>({
     // Technical specs
     needleCount: "",
@@ -102,7 +114,10 @@ export default function CreateProductIdentityPage() {
     weltType: "",
     gauge: "",
     toeClosing: "",
-    styleComposition: "33% wool 31% cotton (sustainable) 21% polyamide 13% silk 2% elastane (LYCRA)",
+    uretici: "", 
+    
+    // Auto-generate style_no initially
+    style_no: generateStyleNumber(),
     
     // BOM items
     bomItems: [],
@@ -213,6 +228,11 @@ export default function CreateProductIdentityPage() {
     // Initialize empty images array
     productImages: []
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const router = useRouter();
 
   // Define available sizes
   const babySizes = ['13-14', '14-15', '15-16', '16-17', '17-18', '18-19', '19-22', '23-26', '27-30', '31-34'];
@@ -517,17 +537,6 @@ export default function CreateProductIdentityPage() {
       pdf.setFontSize(11);
       pdf.setTextColor(31, 41, 55);
       pdf.text(formState.toeClosing || "-", 105, y + 35);
-      
-      // Composition (full width)
-      pdf.setFontSize(10);
-      pdf.setTextColor(107, 114, 128);
-      pdf.text("Composition", 20, y + 45);
-      pdf.setFontSize(11);
-      pdf.setTextColor(31, 41, 55);
-      
-      // Handle long text by splitting into multiple lines if needed
-      const splitComposition = pdf.splitTextToSize(formState.styleComposition, 170);
-      pdf.text(splitComposition, 20, y + 50);
       
       // Bill of Materials section
       y = 115; // Adjust y position based on content above
@@ -939,8 +948,164 @@ export default function CreateProductIdentityPage() {
     }
   };
 
+  // Add a function to regenerate style number on demand
+  const regenerateStyleNumber = () => {
+    setFormState(prev => ({
+      ...prev,
+      style_no: generateStyleNumber()
+    }));
+  };
+
+  // Add validation function to check required fields
+  const validateForm = (): boolean => {
+    const errors: string[] = [];
+    
+    // Check required fields
+    if (!formState.uretici.trim()) {
+      errors.push("Üretici alanı zorunludur");
+    }
+    
+    // No need to check style_no as it's auto-generated
+    // But ensure it exists just in case
+    if (!formState.style_no.trim()) {
+      // If somehow it's empty, regenerate it
+      const newStyleNo = generateStyleNumber();
+      setFormState(prev => ({ ...prev, style_no: newStyleNo }));
+    }
+    
+    if (!formState.needleCount.trim()) {
+      errors.push("Needle Count alanı zorunludur");
+    }
+    
+    if (!formState.gauge.trim()) {
+      errors.push("Gauge alanı zorunludur");
+    }
+    
+    setValidationErrors(errors);
+    
+    // Add console log to debug validation state
+    if (errors.length > 0) {
+      console.log("Form validation failed. Errors:", errors);
+    }
+    
+    return errors.length === 0;
+  };
+
+  const handleFinalSubmit = async () => {
+    try {
+      // Run validation before submission
+      if (!validateForm()) {
+        // Show validation error notification with more details
+        console.error("Validation failed. Errors:", validationErrors);
+        
+        if (validationErrors.length > 0) {
+          alert(`Lütfen form hatalarını düzeltin:\n${validationErrors.join('\n')}`);
+        } else {
+          alert("Form doğrulama hatası oluştu, lütfen tüm gerekli alanları doldurun.");
+        }
+        return;
+      }
+
+      setIsSubmitting(true);
+      setErrorMessage("");
+      
+      // Format the data according to the ProductIdentity interface
+      // Ensure all required database fields are included with proper formatting
+      const productData = {
+        uretici: formState.uretici || "CBN Socks",
+        mal_cinsi: "Standard sock", // Default value instead of styleComposition
+        style_no: formState.style_no,
+        // Convert adet to number and ensure it's not 0 or undefined
+        adet: 1, 
+        // Format termin as YYYY-MM-DD for database compatibility
+        termin: new Date().toISOString().split('T')[0],
+        notlar: `Technical Specs:
+Needle Count: ${formState.needleCount}
+Diameter: ${formState.diameter}
+Cylinder: ${formState.cylinder}
+Welt Type: ${formState.weltType}
+Gauge: ${formState.gauge}
+Toe Closing: ${formState.toeClosing}`,
+        iplik: JSON.stringify(formState.bomItems || []), 
+        burun: formState.toeClosing || "standard",
+        // Store measurements as a separate field - won't cause database issues
+        measurements: JSON.stringify({
+          sizes: formState.activeSizes,
+          measurements: formState.measurements
+        })
+      };
+      
+      console.log("Submitting product data:", productData);
+      
+      // Send data to API
+      const response = await fetch('/api/product-identities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+      
+      if (!response.ok) {
+        let errorMessage = 'Error saving product';
+        try {
+          const errorData = await response.json();
+          console.error("API Error Response:", errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // If response isn't valid JSON, try to get text
+          const errorText = await response.text();
+          console.error("API Error Response (text):", errorText || "Empty response");
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const result = await response.json();
+      console.log("Product saved successfully:", result);
+      
+      // Show success message
+      alert("Ürün başarıyla kaydedildi!");
+      generateReport();
+      
+      // Redirect to the product list after a short delay
+      setTimeout(() => {
+        router.push('/urun-kimligi');
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      setIsSubmitting(false);
+      setErrorMessage(error instanceof Error ? error.message : "Unable to save product identity");
+      
+      // Show more detailed error message
+      alert(`Kayıt hatası: ${error instanceof Error ? error.message : "Bilinmeyen bir hata oluştu"}\n\nLütfen tüm alanları doğru doldurduğunuzdan emin olun.`);
+    }
+  };
+
+  useEffect(() => {
+    if (validationErrors.length > 0) {
+      console.log("Displaying validation errors:", validationErrors);
+    }
+  }, [validationErrors]);
+
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      {validationErrors.length > 0 && (
+        <div className="max-w-7xl mx-auto mb-6">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-4 rounded-xl">
+            <h3 className="text-sm font-medium text-red-800 dark:text-red-300 mb-2">
+              Lütfen aşağıdaki hataları düzeltin:
+            </h3>
+            <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside">
+              {validationErrors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -999,6 +1164,18 @@ export default function CreateProductIdentityPage() {
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+          {/* Display validation errors */}
+          {validationErrors.length > 0 && (
+            <div className="bg-red-50 text-red-800 p-4 rounded-md mb-6 dark:bg-red-900/30 dark:text-red-300">
+              <h3 className="text-sm font-medium mb-2">Lütfen aşağıdaki hataları düzeltin:</h3>
+              <ul className="list-disc pl-5 text-sm">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Step 1: Technical Specs */}
           {currentStep === 1 && (
             <div className="mb-8">
@@ -1007,6 +1184,30 @@ export default function CreateProductIdentityPage() {
                 formState={formState} 
                 handleInputChange={handleInputChange}
               />
+              {/* Style No input with regenerate button */}
+              <div className="mb-4">
+                <label htmlFor="style_no" className="block text-sm font-medium mb-1">Style No</label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    id="style_no"
+                    name="style_no"
+                    value={formState.style_no}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <button 
+                    type="button"
+                    onClick={regenerateStyleNumber}
+                    className="ml-2 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    title="Generate new style number"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
           
@@ -1454,10 +1655,6 @@ export default function CreateProductIdentityPage() {
                     <p className="font-medium text-gray-800 dark:text-white">{formState.toeClosing || "-"}</p>
                   </div>
                 </div>
-                <div className="mt-4 border-l-4 border-blue-500 pl-4 py-2">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Composition</p>
-                  <p className="font-medium text-gray-800 dark:text-white">{formState.styleComposition}</p>
-                </div>
               </div>
               
               {/* Bill of Materials */}
@@ -1583,6 +1780,22 @@ export default function CreateProductIdentityPage() {
                   </div>
                 )}
               </div>
+              
+              {/* Show error message if there's any */}
+              {errorMessage && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-600">{errorMessage}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           
@@ -1632,12 +1845,26 @@ export default function CreateProductIdentityPage() {
               ) : (
                 <button
                   type="button"
-                  className="px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all flex items-center justify-center"
+                  onClick={handleFinalSubmit}
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Save Product
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Save Product
+                    </>
+                  )}
                 </button>
               )}
             </div>

@@ -1,9 +1,5 @@
 import React from "react";
-
-interface TechnicalSpecsProps {
-  formState: any;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-}
+import { TechnicalSpecsProps } from "./types";
 
 const TechnicalSpecs = ({ formState, handleInputChange }: TechnicalSpecsProps) => {
   return (
@@ -11,6 +7,21 @@ const TechnicalSpecs = ({ formState, handleInputChange }: TechnicalSpecsProps) =
       {/* Changed grid from 3 columns to 2 columns for better layout after removing Box */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
+          {/* Add the manufacturer field at the top */}
+          <div className="mb-4">
+            <label htmlFor="uretici" className="block text-sm font-medium mb-1">Manufacturer</label>
+            <input
+              type="text"
+              id="uretici"
+              name="uretici"
+              value={formState.uretici}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              placeholder="CBN Socks"
+              required
+            />
+          </div>
+
           <div className="mb-4">
             <label htmlFor="needleCount" className="block text-sm font-medium mb-1">Needle Count</label>
             <select
@@ -132,21 +143,6 @@ const TechnicalSpecs = ({ formState, handleInputChange }: TechnicalSpecsProps) =
               <option value="comfort">comfort</option>
             </select>
           </div>
-        </div>
-      </div>
-      
-      <div className="mt-6">
-        <div className="mb-4">
-          <label htmlFor="styleComposition" className="block text-sm font-medium mb-1">Style Composition Sales Main</label>
-          <textarea
-            id="styleComposition"
-            name="styleComposition"
-            rows={3}
-            value={formState.styleComposition}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
-            placeholder="33% WOOL, 31% COTTON, 21% POLYAMIDE, 13% SILK, 2% ELASTANE"
-          ></textarea>
         </div>
       </div>
     </div>

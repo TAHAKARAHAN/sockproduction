@@ -1,42 +1,79 @@
-import React from "react";
+"use client";
+import React, { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import { getSampleById } from "@/lib/sample-db";
+import type { Sample } from "@/lib/sample-db";
 import PrintButton from "@/components/PrintButton";
 
-type Props = {
-  params: { id: string }
-}
-
-export default function NumuneDetailPage({ params }: Props) {
-  const id = params.id;
+export default function NumuneDetailPage() {
+  const { id } = useParams();
+  const [numuneData, setNumuneData] = useState<Sample | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // This data would typically come from an API fetch
-  const numuneData = {
-    id,
-    firma: "CBN ÇORAP",
-    beden: "L56",
-    tarih: "23.05.2023",
-    saniye: "132",
-    artikel: "81-03",
-    model: "L56",
-    zeminIplikleri: [
-      { id: '1-8', description: '2tek KARDE M-245 SİYAH', ilkOlcum: '228', sonOlcum: '140', toplam: '88' },
-      { id: '1-7', description: '2tek KARDE M-58 PEMBE', ilkOlcum: '910', sonOlcum: '844', toplam: '66' },
-      { id: '1-6', description: '2tek NYLON 9996 PEMBE', ilkOlcum: '928', sonOlcum: '926', toplam: '2' },
-      { id: '1-3', description: '2tek KARDE M-245 SİYAH', ilkOlcum: '274', sonOlcum: '256', toplam: '18' },
-      { id: '1-1', description: '20/20 Sc BEYAZ LİKRA', ilkOlcum: '1452', sonOlcum: '1414', toplam: '38' },
-      { id: 'L-1', description: '140/140 BEYAZ LASTİK', ilkOlcum: '924', sonOlcum: '916', toplam: '8' },
-      { id: 'B.DİKİŞ', description: '2tek NYLON SİYAH', ilkOlcum: '664', sonOlcum: '654', toplam: '10' },
-    ],
-    desenIplikleri: [
-      { id: '1-1', description: '2tek NYLON 9064 SİYAH (HUSSAN)', ilkOlcum: '716', sonOlcum: '702', toplam: '14' },
-      { id: '2-1', description: '2tek NYLON 6010 YEŞİL (HUSSAN)', ilkOlcum: '710', sonOlcum: '702', toplam: '8' },
-      { id: '3-1', description: '2tek NYLON 10171 BEYAZ (EUROTEX)', ilkOlcum: '1116', sonOlcum: '1112', toplam: '4' },
-      { id: '4-1', description: '2tek NYLON 10108 EKRU (EUROTEX)', ilkOlcum: '738', sonOlcum: '730', toplam: '8' },
-      { id: '5-1', description: '2tek NYLON 10011 KAHVE (EUROTEX)', ilkOlcum: '944', sonOlcum: '936', toplam: '8' },
-      { id: '5-3', description: '2tek NYLON 10048 K.KAHVE (EUROTEX)', ilkOlcum: '1154', sonOlcum: '1150', toplam: '4' },
-    ],
-    toplamAgirlik: "254"
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        console.log(`[UI] Fetching sample with ID: ${id}`);
+        const startTime = Date.now();
+        
+        const data = await getSampleById(id as string);
+        
+        const duration = Date.now() - startTime;
+        console.log(`[UI] Sample fetch completed in ${duration}ms`);
+        
+        if (data) {
+          setNumuneData(data);
+        } else {
+          setError("Numune bulunamadı.");
+        }
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching sample:", err);
+        setError("Numune yüklenirken bir hata oluştu.");
+        setLoading(false);
+      }
+    };
+    
+    if (id) {
+      fetchData();
+    }
+  }, [id]);
+  
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-3 text-gray-600 dark:text-gray-400">Numune yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !numuneData) {
+    return (
+      <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 text-center">
+            <svg className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-2">Numune bulunamadı</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">{error || "Bu numune mevcut değil veya erişim izniniz yok."}</p>
+            <Link 
+              href="/numuneler" 
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Numune Listesine Dön
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -133,7 +170,7 @@ export default function NumuneDetailPage({ params }: Props) {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {numuneData.zeminIplikleri.map((item, index) => (
+                  {numuneData.zeminIplikleri && numuneData.zeminIplikleri.map((item, index) => (
                     <tr key={index}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300 font-medium">
                         {item.id}
@@ -182,7 +219,7 @@ export default function NumuneDetailPage({ params }: Props) {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {numuneData.desenIplikleri.map((item, index) => (
+                  {numuneData.desenIplikleri && numuneData.desenIplikleri.map((item, index) => (
                     <tr key={index}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300 font-medium">
                         {item.id}
@@ -211,16 +248,6 @@ export default function NumuneDetailPage({ params }: Props) {
             <div className="font-medium text-lg mr-4">TOPLAM AĞIRLIK:</div>
             <div className="w-32 text-center px-4 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 text-lg font-bold">
               {numuneData.toplamAgirlik} gr
-            </div>
-          </div>
-          
-          {/* Creation Info */}
-          <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 flex justify-between">
-            <div>
-              <span>Oluşturan: Admin</span>
-            </div>
-            <div>
-              <span>Oluşturma Tarihi: {numuneData.tarih}</span>
             </div>
           </div>
         </div>
