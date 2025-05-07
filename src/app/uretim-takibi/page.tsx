@@ -1,28 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-
-// Production status types
-type ProductionStatus = 
-  | "Burun Dikişi"
-  | "Yıkama"
-  | "Kurutma"
-  | "Paketleme"
-  | "Tamamlandı";
-
-// Production interface
-interface Production {
-  id: string;
-  styleNo: string;
-  urunAdi: string;
-  siparisId: string;
-  musteri: string;
-  miktar: number;
-  baslangicTarihi: string;
-  tahminiTamamlanma: string;
-  durum: ProductionStatus;
-  tamamlanma: number;
-}
+import { Production, ProductionStatus } from "@/lib/production-db";
 
 // Status color mapping for visual indication
 const statusColors = {
@@ -39,8 +18,14 @@ export default function UretimTakibiPage() {
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<ProductionStatus | "">("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [stats, setStats] = useState({
+    total: 0,
+    inProgress: 0,
+    completed: 0,
+    atRisk: 0
+  });
 
-  // Fetch production data - replace hardcoded data with API call
+  // Fetch production data
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
@@ -48,19 +33,42 @@ export default function UretimTakibiPage() {
       setLoading(true);
       
       try {
-        // In a real application, this would be an API call
-        // const response = await fetch('/api/uretim-takibi');
-        // const data = await response.json();
+        // Build query string with any filters
+        let queryParams = new URLSearchParams();
+        if (filterStatus) {
+          queryParams.append('status', filterStatus);
+        }
         
-        // For now, use empty array since we want to avoid hardcoded data
-        // This should be replaced with actual API calls when ready
-        setProductions([]);
-        setLoading(false);
+        // Fetch productions from API
+        const response = await fetch(`/api/productions?${queryParams}`);
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        const data = await response.json();
         
+        // Fetch stats from API
+        const statsResponse = await fetch('/api/productions/stats');
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats({
+            total: statsData.total || 0,
+            inProgress: statsData.in_progress || 0,
+            completed: statsData.completed || 0,
+            atRisk: statsData.at_risk || 0
+          });
+        }
+        
+        if (isMounted) {
+          setProductions(data);
+          setLoading(false);
+          setError(null);
+        }
       } catch (err: any) {
         console.error("Error fetching production data:", err);
-        setError("Üretim bilgileri yüklenirken bir hata oluştu.");
-        setLoading(false);
+        if (isMounted) {
+          setError("Üretim bilgileri yüklenirken bir hata oluştu.");
+          setLoading(false);
+        }
       }
     };
 
@@ -69,25 +77,26 @@ export default function UretimTakibiPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [filterStatus]);
 
+  // Filter productions based on search term
   const filteredProductions = productions.filter(production => {
-    const matchesStatus = filterStatus === "" || production.durum === filterStatus;
-    const matchesSearch = searchTerm === "" || 
-      production.urunAdi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      production.styleNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return searchTerm === "" || 
+      production.urun_adi.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      production.style_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
       production.musteri.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      production.siparisId.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesStatus && matchesSearch;
+      production.siparis_id.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // Calculate stats for dashboard
-  const stats = {
-    total: productions.length,
-    inProgress: productions.filter(p => p.durum !== "Tamamlandı").length,
-    completed: productions.filter(p => p.durum === "Tamamlandı").length,
-    atRisk: productions.filter(p => p.tamamlanma < 50 && p.durum !== "Tamamlandı").length
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
+    } catch (e) {
+      return dateString;
+    }
   };
 
   return (
@@ -284,20 +293,20 @@ export default function UretimTakibiPage() {
                     <tr key={production.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Link href={`/uretim-takibi/${production.id}`} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors">
-                          {production.id}
+                          #{production.id}
                         </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <p className="text-gray-900 dark:text-gray-100 font-medium">{production.urunAdi}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Style No: {production.styleNo}</p>
+                          <p className="text-gray-900 dark:text-gray-100 font-medium">{production.urun_adi}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Style No: {production.style_no}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200">{production.siparisId}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200">{production.siparis_id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200">{production.musteri}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200">{production.miktar}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200">{production.miktar.toLocaleString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${statusColors[production.durum]}`}>
+                        <span className={`px-3 py-1.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${statusColors[production.durum as ProductionStatus]}`}>
                           {production.durum}
                         </span>
                       </td>

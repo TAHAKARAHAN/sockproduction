@@ -169,7 +169,7 @@ export default function NumuneEditPage({ params }: Props) {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Success modal with completely transparent background */}
       {showSuccess && (
         <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">

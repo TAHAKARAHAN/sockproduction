@@ -1,129 +1,64 @@
-import { Pool, PoolClient } from 'pg';
+// Only import Pool on the server side to prevent browser errors
+let Pool: any;
+if (typeof window === 'undefined') {
+  const { Pool: PgPool } = require('pg');
+  Pool = PgPool;
+}
 
-// Ensure database operations only happen on the server side
+// Flag for server-side operations
 const isServer = typeof window === 'undefined';
 
 // Single database connection pool for both reads and writes
-// Fix: Use 'typeof Pool.prototype' instead of 'Pool' for the type
-// Export dbPool so it can be imported by other modules
-export let dbPool: typeof Pool.prototype | null = null;
+let dbPool: any = null;
 
-// Only initialize the pool on the server side
 if (isServer) {
-  dbPool = new Pool({
-    host: 'sock-production-db-instance-1.cna0ueswg26s.us-east-1.rds.amazonaws.com', // Using only writer instance
-    port: 5432,
-    user: 'sockdbadmin',
-    password: 'BEgZuL|~OUr2*waJ4MeNirO(~?12',
-    database: 'postgres',
-    ssl: {
-      rejectUnauthorized: false // Use proper SSL configuration in production
-    },
-    connectionTimeoutMillis: 5000, // Shorter timeout for faster failure detection
-    idleTimeoutMillis: 10000,
-    max: 5, // Fewer connections to avoid overwhelming the database
-    statement_timeout: 10000 // Shorter statement timeout
-  });
-
-  // Initialize connection with health check
-  const initializePool = async () => {
-    try {
-      const isHealthy = await checkDBConnection();
-      if (!isHealthy) {
-        console.error('[DB] Database connection failed - operations will fail until connection is restored');
-      } else {
-        console.log('[DB] Database connected successfully');
-      }
-    } catch (error) {
-      console.error('[DB] Pool initialization error:', error);
-    }
-  };
-
-  // Call initialization but don't wait for it
-  initializePool().catch(console.error);
-}
-
-// Function to check database connection health
-async function checkDBConnection(): Promise<boolean> {
-  if (!isServer || !dbPool) return false;
-
   try {
-    console.log('[DB] Testing database connection...');
-    const client = await dbPool.connect();
-    await client.query('SELECT 1');
-    client.release();
-    console.log('[DB] Database connection test successful');
-    return true;
+    // Initialize the connection pool
+    dbPool = new Pool({
+      host: process.env.DB_HOST || 'sock-production-db-instance-1.cna0ueswg26s.us-east-1.rds.amazonaws.com',
+      port: Number(process.env.DB_PORT) || 5432,
+      user: process.env.DB_USER || 'sockdbadmin',
+      password: process.env.DB_PASSWORD || 'BEgZuL|~OUr2*waJ4MeNirO(~?12',
+      database: process.env.DB_NAME || 'postgres',
+      ssl: {
+        rejectUnauthorized: false
+      },
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 10000,
+      max: 5,
+      statement_timeout: 10000
+    });
+    
+    console.log("[DB] Database connection pool initialized");
+  } catch (err) {
+    console.error("[DB] Failed to initialize database connection pool:", err);
+  }
+}
+
+// Execute database query with retry logic
+export async function queryDB(text: string, params: any[] = []) {
+  if (!isServer) {
+    throw new Error("[DB] Database operations can only be performed on the server side");
+  }
+  
+  if (!dbPool) {
+    throw new Error("[DB] Database connection pool not initialized");
+  }
+  
+  const start = Date.now();
+  try {
+    console.log(`[DB] Executing query: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`);
+    const result = await dbPool.query(text, params);
+    const duration = Date.now() - start;
+    console.log(`[DB] Executed query in ${duration}ms: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
+    return result;
   } catch (error) {
-    console.error('[DB] Database connection test failed:', error);
-    return false;
+    const duration = Date.now() - start;
+    console.error(`[DB] Query failed after ${duration}ms: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
+    console.error(`[DB] Error details:`, error);
+    throw error;
   }
 }
-
-// Function to log performance metrics
-const logPerformance = (operation: string, text: string, duration: number, rows: number | null) => {
-  // Handle null rowCount by defaulting to 0
-  const rowCount = rows ?? 0;
-  const formattedDuration = duration.toFixed(2);
-  console.log(`[DB] ${operation} completed in ${formattedDuration}ms | Rows: ${rowCount} | Query: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`);
-  
-  if (duration > 1000) {
-    console.warn(`[DB] Warning: Slow ${operation} detected (${formattedDuration}ms)`);
-  }
-};
-
-// Simplified query function with retry logic
-export async function queryDB(text: string, params: any[] = [], retryCount = 1) {
-  if (!isServer || !dbPool) {
-    throw new Error('[DB] Database operations can only be performed on the server side');
-  }
-
-  console.log(`[DB] Starting query: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`);
-  
-  let lastError: Error | null = null;
-  let attempt = 0;
-  
-  while (attempt <= retryCount) {
-    try {
-      const start = Date.now();
-      const client = await dbPool.connect();
-      
-      try {
-        const res = await client.query(text, params);
-        const duration = Date.now() - start;
-        
-        // Log success after retries if applicable
-        if (attempt > 0) {
-          console.log(`[DB] Query successful after ${attempt} retries`);
-        }
-        
-        logPerformance('Query', text, duration, res.rowCount);
-        return res;
-      } finally {
-        client.release();
-      }
-    } catch (error) {
-      lastError = error as Error;
-      console.error(`[DB] Query error (attempt ${attempt + 1}/${retryCount + 1}):`, error);
-      
-      attempt++;
-      
-      if (attempt <= retryCount) {
-        // Simple fixed delay for retry to avoid exponential backoff complexity
-        const delay = 200;
-        console.log(`[DB] Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-  
-  // If we get here, all attempts failed
-  console.error('[DB] All query attempts failed');
-  throw lastError;
-}
-
-// Use the same query function for mutations to simplify code
-export const mutateDB = queryDB;
 
 // Types for product identity
 export interface ProductIdentity {
@@ -242,4 +177,38 @@ export async function deleteProductIdentity(id: string) {
   console.log(`[DB] Deleted product identity with ID: ${id} in ${duration}ms`);
   
   return result.rows[0] as ProductIdentity | undefined;
+}
+
+/**
+ * Check if the productions table has the notlar column and add it if missing
+ */
+export async function ensureProductionsTableHasNotlarColumn() {
+  try {
+    console.log('[DB] Checking if productions table has notlar column...');
+    
+    // Check if the column exists
+    const checkQuery = `
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'productions' AND column_name = 'notlar'
+    `;
+    const checkResult = await dbPool.query(checkQuery);
+    
+    if (checkResult.rowCount === 0) {
+      console.log('[DB] notlar column not found, adding it now...');
+      
+      // Add the column if it doesn't exist
+      const alterQuery = `ALTER TABLE productions ADD COLUMN notlar TEXT`;
+      await dbPool.query(alterQuery);
+      
+      console.log('[DB] Successfully added notlar column to productions table');
+      return true;
+    } else {
+      console.log('[DB] notlar column already exists in productions table');
+      return false;
+    }
+  } catch (error) {
+    console.error('[DB] Error ensuring productions table has notlar column:', error);
+    throw error;
+  }
 }

@@ -684,19 +684,59 @@ export default function YeniNumunePage() {
   const handleFinalSubmit = () => {
     setIsSubmitting(true);
     
-    // Here you would typically send the data to your API
-    console.log("Form submitted:", formData);
-    
-    // Simulate API call with slight delay
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setShowSuccess(true);
+    // Prepare data to send to the API
+    const sampleData = {
+      firma: formData.firma,
+      beden: formData.beden,
+      tarih: formData.tarih,
+      saniye: formData.saniye,
+      artikel: formData.artikel,
+      model: formData.model,
+      durum: "İşlemde",
       
-      // Redirect to list page after showing success message
-      setTimeout(() => {
-        router.push('/numuneler');
-      }, 2000);
-    }, 800);
+      // Include all technical specs
+      needle_count: formData.needleCount,
+      diameter: formData.diameter,
+      cylinder: formData.cylinder,
+      welt_type: formData.weltType,
+      gauge: formData.gauge,
+      toe_closing: formData.toeClosing,
+      
+      // Yarn details
+      zemin_iplikleri: formData.zeminIplikleri.filter(item => item.description),
+      desen_iplikleri: formData.desenIplikleri.filter(item => item.description),
+      toplam_agirlik: formData.toplamAgirlik,
+      notlar: formData.notlar
+    };
+    
+    // Send data to API
+    fetch('/api/samples', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sampleData),
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('API request failed');
+        }
+        return response.json();
+      })
+      .then(data => {
+        setIsSubmitting(false);
+        setShowSuccess(true);
+        
+        // Redirect to list page after showing success message
+        setTimeout(() => {
+          router.push('/numuneler');
+        }, 2000);
+      })
+      .catch(error => {
+        console.error('Error creating sample:', error);
+        setIsSubmitting(false);
+        alert('Numune oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+      });
   };
 
   return (

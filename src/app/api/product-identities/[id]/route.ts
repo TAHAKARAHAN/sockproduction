@@ -1,19 +1,20 @@
-import { NextResponse } from 'next/server';
-import { getProductIdentityById, updateProductIdentity, deleteProductIdentity } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+import { queryDB, getProductIdentityById, updateProductIdentity, deleteProductIdentity } from '@/lib/db';
 
-// GET handler to fetch a specific product identity
+// GET handler to fetch a specific product identity by id
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Don't convert to number, keep as string for db functions
   const id = params.id;
   console.log(`[API] GET /api/product-identities/${id} - Fetching product identity`);
   
   try {
-    // Get data from database
-    const product = await getProductIdentityById(id);
+    const productIdentity = await getProductIdentityById(id);
     
-    if (!product) {
+    if (!productIdentity) {
+      console.log(`[API] GET /api/product-identities/${id} - Product identity not found`);
       return NextResponse.json(
         { error: 'Product identity not found' },
         { status: 404 }
@@ -21,10 +22,9 @@ export async function GET(
     }
     
     console.log(`[API] Successfully fetched product identity with ID: ${id}`);
-    return NextResponse.json(product);
-  } catch (error: any) {
-    console.error(`[API] Error fetching product identity:`, error);
-    
+    return NextResponse.json(productIdentity);
+  } catch (error) {
+    console.error(`[API] GET /api/product-identities/${id} - Failed:`, error);
     return NextResponse.json(
       { error: 'Failed to fetch product identity' },
       { status: 500 }
@@ -37,7 +37,8 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { id } = params;
+  // Don't convert to number, keep as string for db functions
+  const id = params.id;
   console.log(`[API] PUT /api/product-identities/${id} - Updating product identity`);
   const startTime = Date.now();
   
@@ -45,20 +46,23 @@ export async function PUT(
     const data = await request.json();
     console.log(`[API] PUT data preview: ${Object.keys(data).join(', ')}`);
     
-    const updatedProduct = await updateProductIdentity(id, data);
+    // Remove measurements field which doesn't exist in the database
+    const { measurements, ...updateData } = data;
     
-    const duration = Date.now() - startTime;
+    const updated = await updateProductIdentity(id, updateData);
     
-    if (!updatedProduct) {
-      console.log(`[API] PUT /api/product-identities/${id} - Product not found (${duration}ms)`);
+    if (!updated) {
+      console.log(`[API] PUT /api/product-identities/${id} - Product identity not found`);
       return NextResponse.json(
         { error: 'Product identity not found' },
         { status: 404 }
       );
     }
     
-    console.log(`[API] PUT /api/product-identities/${id} - Successfully updated product in ${duration}ms`);
-    return NextResponse.json(updatedProduct);
+    const duration = Date.now() - startTime;
+    console.log(`[API] PUT /api/product-identities/${id} - Successfully updated product identity in ${duration}ms`);
+    
+    return NextResponse.json(updated);
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error(`[API] PUT /api/product-identities/${id} - Failed after ${duration}ms:`, error);
@@ -75,29 +79,25 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { id } = params;
+  // Don't convert to number, keep as string for db functions
+  const id = params.id;
   console.log(`[API] DELETE /api/product-identities/${id} - Deleting product identity`);
-  const startTime = Date.now();
   
   try {
-    const deletedProduct = await deleteProductIdentity(id);
+    const deleted = await deleteProductIdentity(id);
     
-    const duration = Date.now() - startTime;
-    
-    if (!deletedProduct) {
-      console.log(`[API] DELETE /api/product-identities/${id} - Product not found (${duration}ms)`);
+    if (!deleted) {
+      console.log(`[API] DELETE /api/product-identities/${id} - Product identity not found`);
       return NextResponse.json(
         { error: 'Product identity not found' },
         { status: 404 }
       );
     }
     
-    console.log(`[API] DELETE /api/product-identities/${id} - Successfully deleted product in ${duration}ms`);
-    return NextResponse.json(deletedProduct);
+    console.log(`[API] DELETE /api/product-identities/${id} - Successfully deleted product identity`);
+    return NextResponse.json({ success: true });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[API] DELETE /api/product-identities/${id} - Failed after ${duration}ms:`, error);
-    
+    console.error(`[API] DELETE /api/product-identities/${id} - Failed:`, error);
     return NextResponse.json(
       { error: 'Failed to delete product identity' },
       { status: 500 }
