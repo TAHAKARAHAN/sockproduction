@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sign } from 'jsonwebtoken';
-
-// Gerçek uygulamada bu değerler güvenli bir veritabanından veya ortam değişkenlerinden gelmelidir
-const DEMO_USER = {
-  email: 'admin@example.com',
-  password: 'password', // Gerçek ortamda bu karmalanmış (hashed) olmalıdır
-  name: 'Admin'
-};
+import bcrypt from 'bcryptjs';
+import { queryDB } from '@/lib/db';
 
 // JWT için gizli anahtarınız
-// UYARI: Bu bir örnektir, gerçek ortamda JWT_SECRET ortam değişkeni olarak saklanmalıdır
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secure-jwt-secret-key-should-be-in-env';
 
 export async function POST(request: NextRequest) {
@@ -17,27 +11,73 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = body;
 
-    // Kullanıcı kimlik doğrulaması
-    // Gerçek uygulamada bu bir veritabanı sorgusu olacaktır
-    if (email !== DEMO_USER.email || password !== DEMO_USER.password) {
+    if (!email || !password) {
+      return NextResponse.json(
+        { message: 'E-posta ve şifre zorunludur' }, 
+        { status: 400 }
+      );
+    }
+
+    // Veritabanından kullanıcıyı bul
+    const query = `SELECT id, name, email, password_hash, role, active FROM users WHERE email = $1`;
+    const result = await queryDB(query, [email]);
+    
+    // Kullanıcı bulunamadı
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { message: 'Geçersiz e-posta veya şifre' }, 
+        { status: 401 }
+      );
+    }
+    
+    const user = result.rows[0];
+    
+    // Kullanıcı aktif değil
+    if (!user.active) {
+      return NextResponse.json(
+        { message: 'Bu hesap devre dışı bırakılmış. Lütfen yöneticinize başvurun.' }, 
+        { status: 403 }
+      );
+    }
+    
+    // Şifre kontrolü
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isPasswordValid) {
       return NextResponse.json(
         { message: 'Geçersiz e-posta veya şifre' }, 
         { status: 401 }
       );
     }
 
+    // Son giriş zamanını güncelle
+    await queryDB(
+      `UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1`,
+      [user.id]
+    );
+
     // JWT token oluştur
     const token = sign(
       { 
-        email: DEMO_USER.email,
-        name: DEMO_USER.name,
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
       },
       JWT_SECRET,
-      { expiresIn: '7d' } // Token'ın geçerlilik süresi
+      { expiresIn: '7d' }
     );
 
-    // Başarılı yanıt
-    return NextResponse.json({ token, user: { email: DEMO_USER.email, name: DEMO_USER.name } });
+    // Başarılı yanıt (şifre hariç kullanıcı bilgilerini döndür)
+    return NextResponse.json({ 
+      token, 
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    });
     
   } catch (error) {
     console.error('Login error:', error);

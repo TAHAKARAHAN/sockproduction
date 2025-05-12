@@ -8,7 +8,6 @@ export default function YeniUretimTakibiPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
   // Create a mapping for converting text miktar to numeric values
   const miktarValueMap: Record<string, number> = {
@@ -24,79 +23,64 @@ export default function YeniUretimTakibiPage() {
 
   const handleSubmit = async (formData: ProductionFormData) => {
     setIsSubmitting(true);
-    setError(null);
-    
-    // Log form submission data
-    console.log("Submitting production data:", formData);
     
     try {
-      // Log detailed information about variants
-      formData.variants.forEach((variant, index) => {
-        console.log(`Variant ${index + 1}:`, {
-          no: index + 1,
-          model: variant.model,
-          renk: variant.renk,
-          beden: variant.beden,
-          adet: variant.adet,
-          miktar: variant.miktar
-        });
-      });
+      // Format variants for the notlar field
+      const notesData = {
+        variants: formData.variants || [],
+        additionalDetails: {
+          hammaddeDetay: formData.hammaddeDetay,
+          numuneTesti: formData.numuneTesti,
+          uretimDetay: formData.uretimDetay,
+          burunDikisi: formData.burunDikisi,
+          yikama: formData.yikama
+        }
+      };
       
       // Calculate total adet from all variants
       const totalAdet = formData.variants.reduce((sum, variant) => sum + (variant.adet || 0), 0);
       
-      // Prepare data for API - using the exact field names expected by the API
-      const apiData = {
+      // Prepare data for API
+      const productionData = {
         style_no: formData.styleNo,
         urun_adi: formData.urunAdi,
         siparis_id: formData.siparisId,
         musteri: formData.musteri,
-        miktar: formData.miktar || totalAdet,
+        miktar: totalAdet || formData.adet || 0,
         baslangic_tarihi: formData.baslangicTarihi,
         tahmini_tamamlanma: formData.tahminiTamamlanma,
-        durum: formData.durum,
-        tamamlanma: formData.tamamlanma,
-        notlar: JSON.stringify({
-          variants: formData.variants,
-          additionalDetails: {
-            hammaddeDetay: formData.hammaddeDetay,
-            numuneTesti: formData.numuneTesti,
-            uretimDetay: formData.uretimDetay,
-            burunDikisi: formData.burunDikisi,
-            yikama: formData.yikama
-          }
-        })
+        durum: formData.durum || "Üretim",
+        tamamlanma: 0,
+        notlar: JSON.stringify(notesData)
       };
       
-      console.log("API data prepared:", apiData);
-      
-      // Make the API call to save the production
+      // Make the actual API call to save the data
       const response = await fetch('/api/productions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(apiData),
+        body: JSON.stringify(productionData),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Unknown error occurred');
+        throw new Error(errorData.error || 'Failed to create production record');
       }
       
-      const savedProduction = await response.json();
-      console.log("Production saved successfully:", savedProduction);
-      
+      // On success
+      setIsSubmitting(false);
       setShowSuccess(true);
       
       // Redirect after showing success message
       setTimeout(() => {
-        router.push(`/uretim-takibi/${savedProduction.id}`);
+        router.push("/uretim-takibi");
       }, 2000);
-    } catch (err) {
-      console.error("Error saving production:", err);
-      setError(err instanceof Error ? err.message : 'Failed to save production');
+      
+    } catch (error) {
+      console.error("Error creating production:", error);
       setIsSubmitting(false);
+      alert(`Üretim kaydı oluşturulurken bir hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`);
     }
   };
   
@@ -128,23 +112,23 @@ export default function YeniUretimTakibiPage() {
         </div>
       )}
       
-      {/* Error message */}
-      {error && (
-        <div className="mb-6 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 rounded">
+      <div className="max-w-7xl mx-auto">
+        {/* Add an info alert about the variants in basic info */}
+        <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 dark:bg-blue-900/30 dark:border-blue-400">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Varyantlar artık temel bilgiler bölümünde görüntüleniyor. Varyant bilgilerini burada ekleyebilir ve düzenleyebilirsiniz.
+              </p>
             </div>
           </div>
         </div>
-      )}
-      
-      <div className="max-w-7xl mx-auto">
+        
         <div className="mb-8 flex justify-between items-center">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -160,7 +144,11 @@ export default function YeniUretimTakibiPage() {
         </div>
         
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-          <ProductionForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          <ProductionForm 
+            onSubmit={handleSubmit} 
+            isSubmitting={isSubmitting}
+            showVariantsInBasicInfo={true} // Show variants in the basic info section
+          />
         </div>
       </div>
     </div>

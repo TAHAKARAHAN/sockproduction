@@ -232,6 +232,7 @@ export default function CreateProductIdentityPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false); // Add success modal state
   const router = useRouter();
 
   // Define available sizes
@@ -1064,10 +1065,10 @@ Toe Closing: ${formState.toeClosing}`,
       const result = await response.json();
       console.log("Product saved successfully:", result);
       
-      // Show success message
-      alert("Ürün başarıyla kaydedildi!");
-      generateReport();
-      
+      // Show success modal instead of alert/PDF
+      setShowSuccess(true);
+      setIsSubmitting(false);
+
       // Redirect to the product list after a short delay
       setTimeout(() => {
         router.push('/urun-kimligi');
@@ -1091,6 +1092,31 @@ Toe Closing: ${formState.toeClosing}`,
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      {/* Success modal overlay */}
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/20 dark:bg-gray-900/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-2xl max-w-md w-full mx-4 transform animate-fade-in">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 mb-4">
+                <svg className="h-10 w-10 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">Ürün Kimliği Kaydedildi!</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">Yeni ürün başarıyla kaydedildi.</p>
+              <div className="flex justify-center">
+                <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-2 w-64 overflow-hidden">
+                  <div className="bg-green-500 h-2 rounded-full animate-progress-bar"></div>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                Ürün kimliği listesine yönlendiriliyorsunuz...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {validationErrors.length > 0 && (
         <div className="max-w-7xl mx-auto mb-6">
           <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-4 rounded-xl">
@@ -1187,7 +1213,7 @@ Toe Closing: ${formState.toeClosing}`,
               {/* Style No input with regenerate button */}
               <div className="mb-4">
                 <label htmlFor="style_no" className="block text-sm font-medium mb-1">Style No</label>
-                <div className="flex">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     id="style_no"
@@ -1199,7 +1225,7 @@ Toe Closing: ${formState.toeClosing}`,
                   <button 
                     type="button"
                     onClick={regenerateStyleNumber}
-                    className="ml-2 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    className="sm:ml-2 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                     title="Generate new style number"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1273,7 +1299,7 @@ Toe Closing: ${formState.toeClosing}`,
                             className="p-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                              <path fillRule="evenodd" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                           </button>
                         </div>
@@ -1443,9 +1469,9 @@ Toe Closing: ${formState.toeClosing}`,
               
               <div className="flex flex-col lg:flex-row gap-8">
                 {/* Left column: Measurements table - Dynamic size columns */}
-                <div className="flex-1">
+                <div className="flex-1 overflow-x-auto">
                   <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs md:text-sm">
                       <thead>
                         <tr className="bg-gray-50 dark:bg-gray-700">
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase sticky left-0 bg-gray-50 dark:bg-gray-700">Measurement</th>
@@ -1502,7 +1528,7 @@ Toe Closing: ${formState.toeClosing}`,
                 </div>
                 
                 {/* Right column: Technical drawing */}
-                <div className="w-full lg:w-1/3 flex flex-col">
+                <div className="w-full lg:w-1/3 flex flex-col mt-8 lg:mt-0">
                   <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full flex flex-col">
                     <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-3 text-center">Technical Drawing</h3>
                     <div className="flex-grow flex items-center justify-center overflow-hidden">
@@ -1510,7 +1536,7 @@ Toe Closing: ${formState.toeClosing}`,
                         src="/images/tech-draw.png" 
                         alt="Sock technical drawing"
                         className="w-auto h-auto max-w-full object-contain"
-                        style={{ maxHeight: 'calc(100vh - 300px)' }}
+                        style={{ maxHeight: 'calc(100vh - 300px)', width: '100%' }}
                       />
                     </div>
                   </div>
@@ -1568,7 +1594,7 @@ Toe Closing: ${formState.toeClosing}`,
                         <img 
                           src={image.preview} 
                           alt={`Product Preview ${index + 1}`}
-                          className="w-full h-64 object-contain"
+                          className="w-full h-48 sm:h-64 object-contain"
                         />
                         <button
                           type="button"
@@ -1596,7 +1622,7 @@ Toe Closing: ${formState.toeClosing}`,
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {formState.productImages.map((image, index) => (
                       <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 p-2 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="w-full h-80">
+                        <div className="w-full h-48 sm:h-80">
                           <img 
                             src={image.preview} 
                             alt={`Product Image ${index + 1}`}
@@ -1707,7 +1733,7 @@ Toe Closing: ${formState.toeClosing}`,
                 <div className="flex flex-col lg:flex-row gap-8">
                   {/* Left column: Measurements table */}
                   <div className="flex-1 overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs md:text-sm">
                       <thead>
                         <tr className="bg-gray-50 dark:bg-gray-700">
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-700">Measurement</th>
@@ -1747,7 +1773,7 @@ Toe Closing: ${formState.toeClosing}`,
                   </div>
                   
                   {/* Right column: Technical drawing - Properly positioned alongside measurements */}
-                  <div className="w-full lg:w-1/3 flex flex-col">
+                  <div className="w-full lg:w-1/3 flex flex-col mt-8 lg:mt-0">
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full flex flex-col">
                       <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-3 text-center">Technical Drawing</h3>
                       <div className="flex-grow flex items-center justify-center overflow-hidden">
@@ -1755,7 +1781,7 @@ Toe Closing: ${formState.toeClosing}`,
                           src="/images/tech-draw.png" 
                           alt="Sock technical drawing"
                           className="w-auto h-auto max-w-full object-contain"
-                          style={{ maxHeight: '300px' }}
+                          style={{ maxHeight: '300px', width: '100%' }}
                         />
                       </div>
                     </div>

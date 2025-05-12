@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -29,7 +29,10 @@ type Props = {
 
 export default function NumuneEditPage({ params }: Props) {
   const router = useRouter();
-  const id = params.id;
+  // Unwrap params using React.use()
+  const unwrappedParams = use(params);
+  const id = unwrappedParams.id;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   

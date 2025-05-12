@@ -1,21 +1,24 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ProductionForm, { ProductionFormData } from "@/components/uretim-takibi/ProductionForm";
 
 export default function UretimTakibiDuzenlePage({ params }: { params: { id: string } }) {
+  // Unwrap params using React.use()
+  const unwrappedParams = use(params);
+  const id = unwrappedParams.id;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [production, setProduction] = useState<ProductionFormData | null>(null);
   const router = useRouter();
-  const id = params.id;
-  
+
   useEffect(() => {
     const fetchProduction = async () => {
       setLoading(true);
-      
+
       // In a real app, this would be an API call
       setTimeout(() => {
         const mockProduction: ProductionFormData = {
@@ -57,33 +60,33 @@ export default function UretimTakibiDuzenlePage({ params }: { params: { id: stri
             notlar: "Yıkama işlemi devam ediyor. Tahmini tamamlanma süresi 2 gün."
           }
         };
-        
+
         setProduction(mockProduction);
         setLoading(false);
       }, 800);
     };
-    
+
     fetchProduction();
   }, [id]);
-  
+
   const handleSubmit = (formData: ProductionFormData) => {
     setIsSubmitting(true);
-    
+
     // In a real application, you would make an API call to update the data
     console.log("Updating production data:", formData);
-    
+
     // Simulate API call delay
     setTimeout(() => {
       setIsSubmitting(false);
       setShowSuccess(true);
-      
+
       // Redirect after showing success message
       setTimeout(() => {
         router.push(`/uretim-takibi/${id}`);
       }, 2000);
     }, 1000);
   };
-  
+
   if (loading) {
     return (
       <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center">
@@ -94,7 +97,7 @@ export default function UretimTakibiDuzenlePage({ params }: { params: { id: stri
       </div>
     );
   }
-  
+
   if (!production) {
     return (
       <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -108,7 +111,7 @@ export default function UretimTakibiDuzenlePage({ params }: { params: { id: stri
       </div>
     );
   }
-  
+
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Success overlay message */}
@@ -123,7 +126,7 @@ export default function UretimTakibiDuzenlePage({ params }: { params: { id: stri
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">Üretim Kaydı Güncellendi!</h3>
               <p className="text-gray-500 dark:text-gray-400 mb-6">Değişiklikleriniz başarıyla kaydedildi.</p>
-              
+
               <div className="flex justify-center">
                 <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-2 w-64 overflow-hidden">
                   <div className="bg-green-500 h-2 rounded-full animate-progress-bar"></div>
@@ -136,7 +139,7 @@ export default function UretimTakibiDuzenlePage({ params }: { params: { id: stri
           </div>
         </div>
       )}
-      
+
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
@@ -155,7 +158,7 @@ export default function UretimTakibiDuzenlePage({ params }: { params: { id: stri
             {production.urunAdi} ({production.styleNo}) - Üretim Takibi
           </p>
         </div>
-        
+
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
           <ProductionForm 
             initialData={production}
@@ -163,7 +166,7 @@ export default function UretimTakibiDuzenlePage({ params }: { params: { id: stri
             isSubmitting={isSubmitting}
           />
         </div>
-        
+
         <div className="flex justify-center mt-6">
           <Link 
             href={`/uretim-takibi/${id}`}

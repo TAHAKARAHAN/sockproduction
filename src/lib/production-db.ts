@@ -161,15 +161,33 @@ export async function updateProduction(id: string, data: Partial<Omit<Production
   const start = Date.now();
   
   try {
-    const fields = Object.keys(data).filter(key => data[key as keyof typeof data] !== undefined);
-    if (fields.length === 0) {
-      console.log(`[DB] No fields to update for production with ID: ${id}`);
+    // Filter out undefined values and non-existent columns
+    // Only keep fields that exist in the database schema
+    const validFields = [
+      'style_no', 'urun_adi', 'siparis_id', 'musteri', 'miktar',
+      'baslangic_tarihi', 'tahmini_tamamlanma', 'durum', 'tamamlanma', 'notlar'
+    ];
+    
+    const filteredData: Record<string, any> = {};
+    
+    Object.keys(data).forEach(key => {
+      if (validFields.includes(key) && data[key as keyof typeof data] !== undefined) {
+        filteredData[key] = data[key as keyof typeof data];
+      }
+    });
+    
+    // Log what we're actually updating
+    console.log(`[DB] Updating fields: ${Object.keys(filteredData).join(', ')}`);
+    
+    if (Object.keys(filteredData).length === 0) {
+      console.log(`[DB] No valid fields to update for production with ID: ${id}`);
       return null;
     }
     
     // Dynamically build the SET clause and parameter array
+    const fields = Object.keys(filteredData);
     const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
-    const values = fields.map(field => data[field as keyof typeof data]);
+    const values = fields.map(field => filteredData[field]);
     
     const query = `UPDATE productions SET ${setClause} WHERE id = $1 RETURNING *`;
     
@@ -242,6 +260,26 @@ export async function getProductionStats() {
   } catch (error) {
     const duration = Date.now() - start;
     console.error(`[DB] Failed to retrieve production statistics after ${duration}ms:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get all productions that have a specific QR code assigned to any variant
+ */
+export async function getProductionsWithQRCode(qrCode: string): Promise<Production[]> {
+  try {
+    const query = `
+      SELECT * FROM productions 
+      WHERE notlar IS NOT NULL 
+      AND notlar LIKE $1
+    `;
+    const values = [`%${qrCode}%`];
+    
+    const result = await queryDB(query, values);
+    return result.rows;
+  } catch (error) {
+    console.error('Error in getProductionsWithQRCode:', error);
     throw error;
   }
 }

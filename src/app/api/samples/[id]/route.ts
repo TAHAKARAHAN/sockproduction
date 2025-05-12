@@ -6,7 +6,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const id = params.id;
+  const { id } = params;
   console.log(`[API] GET /api/samples/${id} - Fetching sample`);
   const startTime = Date.now();
   
@@ -38,7 +38,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const id = params.id;
+  const { id } = params;
   console.log(`[API] PUT /api/samples/${id} - Updating sample`);
   const startTime = Date.now();
   
@@ -70,7 +70,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const id = params.id;
+  const { id } = params;
   console.log(`[API] DELETE /api/samples/${id} - Deleting sample`);
   const startTime = Date.now();
   

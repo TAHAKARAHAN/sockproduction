@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 export default function LogoutPage() {
   const router = useRouter();
   useEffect(() => {
-    Cookies.remove("authToken");
-    Cookies.remove("userEmail");
+    // Remove cookies with explicit path to ensure they're properly removed
+    Cookies.remove("authToken", { path: '/' });
+    Cookies.remove("userEmail", { path: '/' });
     router.replace("/login");
   }, [router]);
   return null;

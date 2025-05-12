@@ -33,10 +33,24 @@ export default function LoginPage() {
         throw new Error(data.message || 'Giriş yapılırken bir hata oluştu');
       }
       
-      // Cookie'yi ayarla
+      // Safari-compatible cookie settings
       const expires = rememberMe ? 7 : undefined;
-      Cookies.set('authToken', data.token, { expires, sameSite: 'strict', secure: true });
-      Cookies.set('userEmail', email, { expires, sameSite: 'strict', secure: true });
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      // Set cookies with Safari-compatible options
+      Cookies.set('authToken', data.token, { 
+        expires, 
+        sameSite: 'lax', // Changed from 'strict' to 'lax' for better compatibility
+        secure: !isLocalhost, // Only use secure in production environments
+        path: '/' // Explicitly set path
+      });
+      
+      Cookies.set('userEmail', email, { 
+        expires, 
+        sameSite: 'lax', 
+        secure: !isLocalhost,
+        path: '/'
+      });
 
       setIsLoading(false);
       router.push('/');

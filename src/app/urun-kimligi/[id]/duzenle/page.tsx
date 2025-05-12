@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -36,7 +36,9 @@ interface TechnicalSpecs {
 
 export default function UrunKimligiDuzenlePage() {
   const params = useParams();
-  const id = params?.id as string;
+  // Unwrap params properly
+  const unwrappedParams = use(params);
+  const id = unwrappedParams?.id as string;
   const router = useRouter();
   
   const [loading, setLoading] = useState(true);

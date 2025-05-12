@@ -8,7 +8,7 @@ interface FinalSummaryProps {
 const FinalSummary = ({ formState }: FinalSummaryProps) => {
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden shadow-md">
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse table-auto">
         <tbody>
           {/* Header Row */}
           <tr className="bg-gray-50">
@@ -212,37 +212,8 @@ const FinalSummary = ({ formState }: FinalSummaryProps) => {
           </tr>
           
           {/* Style Images Row */}
-          <tr>
-            <td className="border border-gray-300 p-2 text-center">
-              <div className="font-bold">STYLE 1</div>
-            </td>
-            <td colSpan={2} className="border border-gray-300 p-2 text-center">
-              <div className="font-bold">STYLE 2</div>
-            </td>
-            <td colSpan={3} className="border border-gray-300 p-2 text-center">
-              <div className="font-bold">STYLE 3</div>
-            </td>
-          </tr>
-          
-          {/* Images Row */}
-          <tr>
-            <td className="border border-gray-300 p-2">
-              <div className="flex justify-center">
-                <div className="w-32 h-40 bg-pink-200 flex items-center justify-center relative">
-                  <div className="w-28 h-38">
-                    <Image 
-                      src="/images/sock-style1.png" 
-                      alt="Style 1 sock" 
-                      width={112} 
-                      height={152} 
-                      layout="responsive"
-                      objectFit="contain" 
-                    />
-                  </div>
-                </div>
-              </div>
-            </td>
-            <td colSpan={2} className="border border-gray-300 p-2">
+          <tr className="flex flex-col sm:table-row">
+            <td colSpan={2} className="border border-gray-300 p-2 sm:w-1/2">
               <div className="flex justify-center">
                 <div className="w-32 h-40 bg-gray-100 flex items-center justify-center relative">
                   <div className="w-28 h-38">
@@ -258,7 +229,7 @@ const FinalSummary = ({ formState }: FinalSummaryProps) => {
                 </div>
               </div>
             </td>
-            <td colSpan={3} className="border border-gray-300 p-2">
+            <td colSpan={3} className="border border-gray-300 p-2 sm:w-1/2">
               <div className="flex justify-center">
                 <div className="w-32 h-40 bg-blue-100 flex items-center justify-center relative">
                   <div className="w-28 h-38">
@@ -277,8 +248,8 @@ const FinalSummary = ({ formState }: FinalSummaryProps) => {
           </tr>
           
           {/* Color Swatches Row */}
-          <tr>
-            <td className="border border-gray-300 p-2">
+          <tr className="flex flex-wrap sm:table-row">
+            <td className="border border-gray-300 p-2 w-full sm:w-auto">
               <div>
                 <div className="text-xs font-bold">Main Color</div>
                 <div className="w-12 h-8 bg-pink-400 my-1"></div>

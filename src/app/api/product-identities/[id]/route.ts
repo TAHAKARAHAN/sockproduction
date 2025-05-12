@@ -6,8 +6,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Don't convert to number, keep as string for db functions
-  const id = params.id;
+  // Using params directly
+  const { id } = params;
   console.log(`[API] GET /api/product-identities/${id} - Fetching product identity`);
   
   try {
@@ -37,8 +37,8 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // Don't convert to number, keep as string for db functions
-  const id = params.id;
+  // Using params directly
+  const { id } = params;
   console.log(`[API] PUT /api/product-identities/${id} - Updating product identity`);
   const startTime = Date.now();
   
@@ -79,8 +79,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // Don't convert to number, keep as string for db functions
-  const id = params.id;
+  // Using params directly
+  const { id } = params;
   console.log(`[API] DELETE /api/product-identities/${id} - Deleting product identity`);
   
   try {

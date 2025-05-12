@@ -467,7 +467,7 @@ export default function UrunKimligiDetayPage() {
               </svg>
               Düzenle
             </Link>
-            <button 
+            {/* <button 
               onClick={generateReport}
               className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
             >
@@ -475,7 +475,7 @@ export default function UrunKimligiDetayPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               PDF İndir
-            </button>
+            </button> */}
             <button 
               onClick={handleDeleteClick}
               className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
@@ -641,7 +641,7 @@ export default function UrunKimligiDetayPage() {
           
           {bomItems.length > 0 ? (
             <div className="overflow-x-auto border rounded-lg">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs md:text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -699,7 +699,7 @@ export default function UrunKimligiDetayPage() {
             {/* Left column: Measurements table with updated design */}
             <div className="flex-1 overflow-x-auto">
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs md:text-sm">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-700">
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-700">
@@ -762,7 +762,7 @@ export default function UrunKimligiDetayPage() {
             </div>
             
             {/* Right column: Technical drawing with improved appearance */}
-            <div className="w-full lg:w-1/3 flex flex-col">
+            <div className="w-full lg:w-1/3 flex flex-col mt-8 lg:mt-0">
               <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-full flex flex-col">
                 <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-3 text-center">Technical Drawing</h3>
                 <div className="flex-grow flex items-center justify-center overflow-hidden">
@@ -770,7 +770,7 @@ export default function UrunKimligiDetayPage() {
                     src="/images/tech-draw.png" 
                     alt="Sock technical drawing"
                     className="w-auto h-auto max-w-full object-contain"
-                    style={{ maxHeight: '300px' }}
+                    style={{ maxHeight: '300px', width: '100%' }}
                   />
                 </div>
               </div>
@@ -789,7 +789,7 @@ export default function UrunKimligiDetayPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {productImages.map((image, index) => (
                 <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 p-2 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="w-full h-80">
+                  <div className="w-full h-60 sm:h-80">
                     <img 
                       src={image} 
                       alt={`Product Image ${index + 1}`}
