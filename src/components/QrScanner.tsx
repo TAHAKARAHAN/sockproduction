@@ -1,10 +1,9 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
-import { Html5QrcodeScanType, Html5QrcodeError } from "html5-qrcode/esm/core";
+import { Html5Qrcode, Html5QrcodeScanType } from "html5-qrcode";
 
 interface QrScannerProps {
-  onScanSuccess: (decodedText: string, decodedResult: any) => void;
+  onScanSuccess: (decodedText: string, decodedResult: unknown) => void;
   onScanFailure?: (error: string) => void;
   scannerHeight?: number;
   scannerWidth?: number;
@@ -48,7 +47,7 @@ export default function QrScanner({
   const startScanning = () => {
     if (!scannerRef.current) return;
 
-    const qrCodeSuccessCallback = (decodedText: string, decodedResult: any) => {
+    const qrCodeSuccessCallback = (decodedText: string, decodedResult: unknown) => {
       onScanSuccess(decodedText, decodedResult);
       setIsScanning(false);
       stopScanning();
@@ -56,7 +55,6 @@ export default function QrScanner({
 
     const qrCodeErrorCallback = (
       errorMessage: string,
-      exception?: any
     ) => {
       if (onScanFailure) {
         onScanFailure(errorMessage);

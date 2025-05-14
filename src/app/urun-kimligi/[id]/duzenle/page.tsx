@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -36,9 +36,8 @@ interface TechnicalSpecs {
 
 export default function UrunKimligiDuzenlePage() {
   const params = useParams();
-  // Unwrap params properly
-  const unwrappedParams = use(params);
-  const id = unwrappedParams?.id as string;
+  // Get the id directly from params
+  const id = params?.id as string;
   const router = useRouter();
   
   const [loading, setLoading] = useState(true);
@@ -170,6 +169,7 @@ export default function UrunKimligiDuzenlePage() {
           setBomItems(parsedItems);
           return;
         }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         // Fall back to string parsing for older format
       }
@@ -262,6 +262,7 @@ Toe Closing: ${techSpecs.toeClosing}`;
     
     try {
       // Format the data for submission - exclude measurements field
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { measurements, ...formDataWithoutMeasurements } = formData;
       
       const updatedData = {
@@ -292,9 +293,14 @@ Toe Closing: ${techSpecs.toeClosing}`;
         router.push(`/urun-kimligi/${id}`);
       }, 2000);
       
-    } catch (err) {
-      console.error("Error updating product identity:", err);
-      setError(err instanceof Error ? err.message : "Güncelleme sırasında bir hata oluştu");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error("Error updating product identity:", err.message);
+        setError(err.message);
+      } else {
+        console.error("Error updating product identity:", err);
+        setError(String(err));
+      }
       setIsSubmitting(false);
     }
   };

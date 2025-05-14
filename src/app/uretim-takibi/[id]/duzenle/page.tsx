@@ -1,112 +1,135 @@
 "use client";
-import React, { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import ProductionForm, { ProductionFormData } from "@/components/uretim-takibi/ProductionForm";
 
-export default function UretimTakibiDuzenlePage({ params }: { params: { id: string } }) {
-  // Unwrap params using React.use()
-  const unwrappedParams = use(params);
-  const id = unwrappedParams.id;
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import ProductionForm, { ProductionFormData } from '@/components/uretim-takibi/ProductionForm';
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [production, setProduction] = useState<ProductionFormData | null>(null);
+export default function DuzenleUretimTakibiPage() {
+  const params = useParams();
+  const id = params?.id as string;
   const router = useRouter();
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [productionData, setProductionData] = useState<Partial<ProductionFormData>>({});
+  const [availableSizes, setAvailableSizes] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [productIdentityId, setProductIdentityId] = useState<string | null>(null);
 
+  // Fetch production data
   useEffect(() => {
-    const fetchProduction = async () => {
-      setLoading(true);
-
-      // In a real app, this would be an API call
-      setTimeout(() => {
-        const mockProduction: ProductionFormData = {
-          styleNo: "77597",
-          urunAdi: "L-Wool Socks with Silk",
-          siparisId: "S235",
-          musteri: "ECC Legwear",
-          miktar: 1200,
-          baslangicTarihi: "2023-04-10",
-          tahminiTamamlanma: "2023-05-10",
-          durum: "Yıkama",
-          tamamlanma: 70,
-          hammaddeDetay: {
-            tarih: "2023-04-10",
-            malzemeler: ["İplik A (250kg)", "İplik B (100kg)", "Yardımcı Malzeme X (50 adet)"],
-            notlar: "Tüm hammaddeler zamanında teslim edildi ve kalite kontrolden geçti."
-          },
-          numuneTesti: {
-            tarih: "2023-04-15",
-            sonuc: "Başarılı",
-            notlar: "Numune testleri başarıyla tamamlandı. Renk ve dayanıklılık testleri olumlu sonuçlandı."
-          },
-          uretimDetay: {
-            baslangicTarihi: "2023-04-20",
-            makinalar: ["Makine 01", "Makine 03", "Makine 05"],
-            calismaSuresi: "120",
-            notlar: "Üretim planlandığı gibi ilerliyor. Herhangi bir sorun yaşanmadı."
-          },
-          burunDikisi: {
-            tarih: "2023-05-05",
-            operator: "Zeynep Kaya",
-            notlar: "Standart dikiş yöntemi kullanıldı. Tüm ürünler kalite kontrolden geçti."
-          },
-          yikama: {
-            tarih: "2023-05-08",
-            yikamaTuru: "Standart",
-            sicaklik: "40",
-            suresi: "45",
-            notlar: "Yıkama işlemi devam ediyor. Tahmini tamamlanma süresi 2 gün."
+    const fetchData = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Fetch production record
+        const response = await fetch(`/api/production/${id}`);
+        if (!response.ok) {
+          throw new Error('Üretim kaydı yüklenirken bir hata oluştu');
+        }
+        
+        const data = await response.json();
+        setProductionData(data);
+        
+        // If this production record is linked to a product identity, fetch it
+        if (data.productIdentityId) {
+          setProductIdentityId(data.productIdentityId);
+          const productResponse = await fetch(`/api/product-identities/${data.productIdentityId}`);
+          
+          if (productResponse.ok) {
+            const productData = await productResponse.json();
+            
+            // Extract sizes from measurements
+            let sizes: string[] = [];
+            if (productData.measurements) {
+              try {
+                const measurementsData = JSON.parse(productData.measurements);
+                if (measurementsData.sizes && Array.isArray(measurementsData.sizes)) {
+                  sizes = measurementsData.sizes;
+                }
+              } catch (e) {
+                console.error('Failed to parse measurements:', e);
+              }
+            }
+            
+            // If we couldn't find sizes, include both baby and adult default sizes
+            if (sizes.length === 0) {
+              sizes = [
+                // Baby sizes
+                '13-14', '15-16', '17-18', '19-22', '23-26', '27-30', '31-34',
+                // Adult sizes
+                '35-38', '39-42', '43-46'
+              ];
+            }
+            
+            // Check if product is marked as baby product type
+            if (productData.productType === 'baby' || (productData.notlar && productData.notlar.includes('productType: baby'))) {
+              // If no baby sizes are included, add default baby sizes
+              if (!sizes.some(s => {
+                const match = s.match(/^(\d+)-/);
+                return match && parseInt(match[1]) < 35;
+              })) {
+                sizes = [
+                  '13-14', '15-16', '17-18', '19-22', '23-26', '27-30', '31-34',
+                  ...sizes
+                ];
+              }
+            }
+            
+            setAvailableSizes(sizes);
           }
-        };
-
-        setProduction(mockProduction);
-        setLoading(false);
-      }, 800);
+        }
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Kayıt yüklenirken bir hata oluştu');
+        setIsLoading(false);
+      }
     };
 
-    fetchProduction();
+    if (id) {
+      fetchData();
+    }
   }, [id]);
 
-  const handleSubmit = (formData: ProductionFormData) => {
+  const handleSubmit = async (data: ProductionFormData) => {
     setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      // Include the productIdentityId if we have one
+      const dataWithProduct = productIdentityId 
+        ? { ...data, productIdentityId } 
+        : data;
+      
+      const response = await fetch(`/api/production/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataWithProduct),
+      });
 
-    // In a real application, you would make an API call to update the data
-    console.log("Updating production data:", formData);
+      if (!response.ok) {
+        throw new Error('Üretim kaydı güncellenirken bir hata oluştu');
+      }
 
-    // Simulate API call delay
-    setTimeout(() => {
+      router.push('/uretim-takibi');
+    } catch (err) {
+      console.error('Error updating production record:', err);
+      setError('Üretim kaydı güncellenirken bir hata oluştu');
       setIsSubmitting(false);
-      setShowSuccess(true);
-
-      // Redirect after showing success message
-      setTimeout(() => {
-        router.push(`/uretim-takibi/${id}`);
-      }, 2000);
-    }, 1000);
+    }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-3 text-gray-600 dark:text-gray-400">Üretim bilgileri yükleniyor...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!production) {
-    return (
-      <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="max-w-7xl mx-auto text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Üretim bulunamadı</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">Düzenlemek istediğiniz üretim kaydı bulunamadı veya silinmiş olabilir.</p>
-          <Link href="/uretim-takibi" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-            Üretim Takip Listesine Geri Dön
-          </Link>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-3 text-gray-600 dark:text-gray-400">Üretim kaydı yükleniyor...</p>
         </div>
       </div>
     );
@@ -114,66 +137,43 @@ export default function UretimTakibiDuzenlePage({ params }: { params: { id: stri
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Success overlay message */}
-      {showSuccess && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-900/20 dark:bg-gray-900/50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-2xl max-w-md w-full mx-4 transform animate-fade-in">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 mb-4">
-                <svg className="h-10 w-10 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">Üretim Kaydı Güncellendi!</h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-6">Değişiklikleriniz başarıyla kaydedildi.</p>
-
-              <div className="flex justify-center">
-                <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-2 w-64 overflow-hidden">
-                  <div className="bg-green-500 h-2 rounded-full animate-progress-bar"></div>
-                </div>
-              </div>
-              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                Üretim detay sayfasına yönlendiriliyorsunuz...
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <Link href="/uretim-takibi" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-              Üretim Takibi
-            </Link>
-            <span>/</span>
-            <Link href={`/uretim-takibi/${id}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-              {id}
-            </Link>
-            <span>/</span>
-            <span>Düzenle</span>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Link href="/uretim-takibi" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                Üretim Takibi
+              </Link>
+              <span>/</span>
+              <span>{id}</span>
+              <span>/</span>
+              <span>Düzenle</span>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Üretim Kaydını Düzenle</h1>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Üretim Kaydı Düzenle</h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            {production.urunAdi} ({production.styleNo}) - Üretim Takibi
-          </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
-          <ProductionForm 
-            initialData={production}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-400">
+            <p>{error}</p>
+          </div>
+        )}
+
+        {availableSizes.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md mb-6">
+            <p className="text-sm text-green-600 dark:text-green-400">
+              Bu ürün için uygun bedenler: {availableSizes.join(', ')}
+            </p>
+          </div>
+        )}
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+          <ProductionForm
+            initialData={productionData}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            availableSizes={availableSizes}
           />
-        </div>
-
-        <div className="flex justify-center mt-6">
-          <Link 
-            href={`/uretim-takibi/${id}`}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 text-sm"
-          >
-            Değişiklikleri iptal et ve detay sayfasına dön
-          </Link>
         </div>
       </div>
     </div>

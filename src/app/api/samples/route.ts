@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from 'next/server';
 import { getAllSamples, createSample } from '@/lib/sample-db';
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   console.log('[API] GET /api/samples - Fetching samples');
   const startTime = Date.now();
   
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
     console.log(`[API] Sample data preview: ${samples.length} items, first item ID: ${samples.length > 0 ? samples[0].id : 'none'}`);
     
     return NextResponse.json(samples);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     console.error(`[API] GET /api/samples - Failed after ${duration}ms:`, error);
     
@@ -42,13 +43,17 @@ export async function POST(request: Request) {
       );
     }
     
+    // Log the incoming date format for debugging
+    console.log(`[API] Sample creation - received date: "${data.tarih}"`);
+    
     // Set defaults for missing fields
     const sampleData = {
       ...data,
       durum: data.durum || 'İşlemde',
-      zemin_iplikleri: data.zemin_iplikleri?.filter((item: any) => item.description) || [],
-      desen_iplikleri: data.desen_iplikleri?.filter((item: any) => item.description) || [],
-      toplam_agirlik: data.toplam_agirlik || "0"
+      zemin_iplikleri: data.zemin_iplikleri?.filter((item: unknown) => (item as { description?: unknown })?.description) || [],
+      desen_iplikleri: data.desen_iplikleri?.filter((item: unknown) => (item as { description?: unknown })?.description) || [],
+      toplam_agirlik: data.toplam_agirlik || "0",
+      additional_field: data.additional_field || 'default_value'
     };
     
     // Create sample
@@ -58,7 +63,7 @@ export async function POST(request: Request) {
     console.log(`[API] POST /api/samples - Successfully created sample with ID: ${sample.id} in ${duration}ms`);
     
     return NextResponse.json(sample, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     console.error(`[API] POST /api/samples - Failed after ${duration}ms:`, error);
     

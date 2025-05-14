@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 // Variant interface for production form
 export interface ProductionVariant {
@@ -12,27 +12,16 @@ export interface ProductionVariant {
 // Define the production form data interface with all required properties
 export interface ProductionFormData {
   // Basic production info
-  styleNo: string;
-  siparisNo?: string;
+  siparisNo: string;    // This maps to style_no in the database
+  artikelNo?: string;   // This maps to siparis_id in the database
   urunAdi: string;
-  siparisId: string;
   musteri: string;
-  adet: number; // Renamed from miktar
+  adet: number;
   baslangicTarihi: string;
   tahminiTamamlanma: string;
   durum: string;
   
   // Production stage details
-  hammaddeDetay?: {
-    tarih: string;
-    malzemeler: string[];
-    notlar: string;
-  };
-  numuneTesti?: {
-    tarih: string;
-    sonuc: string;
-    notlar: string;
-  };
   uretimDetay?: {
     baslangicTarihi: string;
     makinalar: string[];
@@ -42,13 +31,6 @@ export interface ProductionFormData {
   burunDikisi?: {
     tarih: string;
     operator: string;
-    notlar: string;
-  };
-  yikama?: {
-    tarih: string;
-    yikamaTuru: string;
-    sicaklik: string;
-    suresi: string;
     notlar: string;
   };
   
@@ -61,18 +43,19 @@ interface ProductionFormProps {
   onSubmit: (data: ProductionFormData) => void;
   isSubmitting?: boolean;
   showVariantsInBasicInfo?: boolean;  // Add this prop
+  availableSizes?: string[]; // List of all sizes including baby sizes
 }
 
 // Default form data to use when no initialData is provided
 const defaultFormData: ProductionFormData = {
-  styleNo: "",
+  siparisNo: "",
   urunAdi: "",
-  siparisId: "",
+  artikelNo: "",
   musteri: "",
-  adet: 0, // Renamed from miktar
+  adet: 0,
   baslangicTarihi: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
   tahminiTamamlanma: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 14 days from now
-  durum: "Burun Dikişi",
+  durum: "Üretim", // Changed default to "Üretim" since "Burun Dikişi" used to be later
   variants: [{ model: "", renk: "", beden: "", adet: 0 }]
 };
 
@@ -80,7 +63,7 @@ const ProductionForm: React.FC<ProductionFormProps> = ({
   initialData = {}, 
   onSubmit, 
   isSubmitting = false,
-  showVariantsInBasicInfo = false  // Default to false
+  availableSizes = [] // Default to empty array if not provided
 }) => {
   // Merge initialData with defaultFormData
   const [formData, setFormData] = useState<ProductionFormData>({
@@ -93,6 +76,17 @@ const ProductionForm: React.FC<ProductionFormProps> = ({
 
   const [activeTab, setActiveTab] = useState<string>("basicInfo");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Calculate total quantity from variants
+  const totalVariantQuantity = formData.variants.reduce((sum, variant) => sum + variant.adet, 0);
+
+  // Update total quantity when variants change
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      adet: totalVariantQuantity
+    }));
+  }, [totalVariantQuantity]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -153,9 +147,9 @@ const ProductionForm: React.FC<ProductionFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     // Basic validations - more detailed to help identify issues
-    if (!formData.styleNo.trim()) newErrors.styleNo = "Style No gerekli";
+    if (!formData.siparisNo.trim()) newErrors.siparisNo = "Sipariş No gerekli";
     if (!formData.urunAdi.trim()) newErrors.urunAdi = "Ürün adı gerekli";
-    if (!formData.siparisId.trim()) newErrors.siparisId = "Sipariş ID gerekli";
+    if (!formData.artikelNo?.trim()) newErrors.artikelNo = "Artikel No gerekli";
     if (!formData.musteri.trim()) newErrors.musteri = "Müşteri gerekli";
     if (!formData.baslangicTarihi.trim()) newErrors.baslangicTarihi = "Başlangıç tarihi gerekli";
     if (!formData.tahminiTamamlanma.trim()) newErrors.tahminiTamamlanma = "Tahmini tamamlanma tarihi gerekli";
@@ -195,16 +189,16 @@ const ProductionForm: React.FC<ProductionFormProps> = ({
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="styleNo" className="block text-sm font-medium mb-1">Style No</label>
+              <label htmlFor="siparisNo" className="block text-sm font-medium mb-1">Sipariş No</label>
               <input
                 type="text"
-                id="styleNo"
-                name="styleNo"
-                value={formData.styleNo}
+                id="siparisNo"
+                name="siparisNo"
+                value={formData.siparisNo}
                 onChange={handleInputChange}
-                className={getFieldClass("styleNo")}
+                className={getFieldClass("siparisNo")}
               />
-              {errors.styleNo && <p className="mt-1 text-xs text-red-500">{errors.styleNo}</p>}
+              {errors.siparisNo && <p className="mt-1 text-xs text-red-500">{errors.siparisNo}</p>}
             </div>
 
             <div>
@@ -222,17 +216,17 @@ const ProductionForm: React.FC<ProductionFormProps> = ({
             </div>
 
             <div>
-              <label htmlFor="siparisId" className="block text-sm font-medium mb-1">Sipariş ID</label>
+              <label htmlFor="artikelNo" className="block text-sm font-medium mb-1">Artikel No</label>
               <input
                 type="text"
-                id="siparisId"
-                name="siparisId"
-                value={formData.siparisId}
+                id="artikelNo"
+                name="artikelNo"
+                value={formData.artikelNo}
                 onChange={handleInputChange}
-                className={getFieldClass("siparisId")}
+                className={getFieldClass("artikelNo")}
                 required
               />
-              {errors.siparisId && <p className="mt-1 text-xs text-red-500">{errors.siparisId}</p>}
+              {errors.artikelNo && <p className="mt-1 text-xs text-red-500">{errors.artikelNo}</p>}
             </div>
 
             <div>
@@ -250,15 +244,28 @@ const ProductionForm: React.FC<ProductionFormProps> = ({
             </div>
 
             <div>
-              <label htmlFor="adet" className="block text-sm font-medium mb-1">Adet</label> {/* Renamed from Miktar */}
-              <input
-                type="number"
-                id="adet"
-                name="adet"
-                value={formData.adet} // Renamed from miktar
-                onChange={handleInputChange}
-                className={getFieldClass()}
-              />
+              <label htmlFor="adet" className="block text-sm font-medium mb-1">Adet</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  id="adet"
+                  name="adet"
+                  value={formData.adet}
+                  onChange={handleInputChange}
+                  className={getFieldClass()}
+                  readOnly={formData.variants.length > 0}
+                />
+                {formData.variants.length > 0 && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-blue-600 dark:text-blue-400">
+                    Varyant toplamı
+                  </div>
+                )}
+              </div>
+              {formData.variants.length > 0 && (
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Bu değer varyantlardaki adet toplamıdır
+                </p>
+              )}
             </div>
 
             <div>
@@ -298,9 +305,8 @@ const ProductionForm: React.FC<ProductionFormProps> = ({
                 onChange={handleInputChange}
                 className={getFieldClass()}
               >
+                <option value="Üretim">Üretim</option>
                 <option value="Burun Dikişi">Burun Dikişi</option>
-                <option value="Yıkama">Yıkama</option>
-                <option value="Kurutma">Kurutma</option>
                 <option value="Paketleme">Paketleme</option>
                 <option value="Tamamlandı">Tamamlandı</option>
               </select>
@@ -365,13 +371,62 @@ const ProductionForm: React.FC<ProductionFormProps> = ({
                   
                   <div>
                     <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Beden</label>
-                    <input
-                      type="text"
+                    <select
                       value={variant.beden}
-                      onChange={(e) => handleVariantChange(index, "beden", e.target.value)}
-                      placeholder="Beden giriniz"
+                      onChange={e => handleVariantChange(index, "beden", e.target.value)}
                       className={getFieldClass()}
-                    />
+                    >
+                      <option value="">Beden seçiniz</option>
+                      {availableSizes.length > 0 ? (
+                        <>
+                          {/* Check for baby sizes (typically less than 35) */}
+                          {availableSizes.some(size => {
+                            // Check if the size contains dash and starts with number less than 35
+                            const match = size.match(/^(\d+)-/);
+                            return match && parseInt(match[1]) < 35;
+                          }) && (
+                            <optgroup label="Baby Sizes">
+                              {availableSizes
+                                .filter(size => {
+                                  const match = size.match(/^(\d+)-/);
+                                  return match && parseInt(match[1]) < 35;
+                                })
+                                .map(size => (
+                                  <option key={size} value={size}>{size}</option>
+                                ))
+                              }
+                            </optgroup>
+                          )}
+                          
+                          {/* Adult sizes */}
+                          <optgroup label="Adult Sizes">
+                            {availableSizes
+                              .filter(size => {
+                                const match = size.match(/^(\d+)-/);
+                                return !match || parseInt(match[1]) >= 35;
+                              })
+                              .map(size => (
+                                <option key={size} value={size}>{size}</option>
+                              ))
+                            }
+                          </optgroup>
+                        </>
+                      ) : (
+                        // Fallback options if no sizes are provided
+                        <>
+                          <optgroup label="Baby Sizes">
+                            {['13-14', '15-16', '17-18', '19-22', '23-26', '27-30', '31-34'].map(size => (
+                              <option key={size} value={size}>{size}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Adult Sizes">
+                            {['35-38', '39-42', '43-46', '47-50'].map(size => (
+                              <option key={size} value={size}>{size}</option>
+                            ))}
+                          </optgroup>
+                        </>
+                      )}
+                    </select>
                   </div>
                   
                   <div>

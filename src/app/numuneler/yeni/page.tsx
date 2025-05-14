@@ -385,13 +385,13 @@ export default function YeniNumunePage() {
                   className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600"
                 >
                   <option value="">Select Diameter</option>
-                  <option value='3 1/4"'>3 1/4"</option>
-                  <option value='3.5"'>3.5"</option>
-                  <option value='3 3/4"'>3 3/4"</option>
-                  <option value='4"'>4"</option>
-                  <option value='4.5"'>4.5"</option>
-                  <option value='5"'>5"</option>
-                  <option value='5.5"'>5.5"</option>
+                  <option value='3 1/4"'>3 1/4&quot;</option>
+                  <option value='3.5"'>3.5&quot;</option>
+                  <option value='3 3/4"'>3 3/4&quot;</option>
+                  <option value='4"'>4&quot;</option>
+                  <option value='4.5"'>4.5&quot;</option>
+                  <option value='5"'>5&quot;</option>
+                  <option value='5.5"'>5.5&quot;</option>
                 </select>
               </div>
               
@@ -688,7 +688,8 @@ export default function YeniNumunePage() {
     const sampleData = {
       firma: formData.firma,
       beden: formData.beden,
-      tarih: formData.tarih,
+      // Make sure tarih is in a consistent format (DD.MM.YYYY)
+      tarih: formData.tarih.trim(),
       saniye: formData.saniye,
       artikel: formData.artikel,
       model: formData.model,
@@ -723,7 +724,7 @@ export default function YeniNumunePage() {
         }
         return response.json();
       })
-      .then(data => {
+      .then(() => {
         setIsSubmitting(false);
         setShowSuccess(true);
         
@@ -899,7 +900,7 @@ export default function YeniNumunePage() {
         </div>
         
         <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>Click the "Save Sample" button after filling in all fields.</p>
+          <p>Click the &quot;Save Sample&quot; button after filling in all fields.</p>
           <p>If you need help, visit the <span className="text-blue-600 hover:underline cursor-pointer">help page</span>.</p>
         </div>
       </div>

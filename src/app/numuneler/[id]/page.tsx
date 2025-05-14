@@ -3,11 +3,11 @@ import { notFound } from 'next/navigation';
 import SampleDetail from '@/components/numuneler/SampleDetail';
 import { Suspense } from 'react';
 
-// Define proper types for the params
+// Update PageProps to use Promise for params
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // Load fallback component
@@ -30,13 +30,16 @@ function ErrorDisplay() {
   );
 }
 
-// This is a Server Component that fetches data on the server
+// Update the server component to handle Promise-based params
 export default async function SamplePage({ params }: PageProps) {
-  if (!params) {
+  // Await the params Promise to get the id
+  const resolvedParams = await params;
+  
+  if (!resolvedParams) {
     return notFound();
   }
   
-  const id = params.id;
+  const id = resolvedParams.id;
   
   if (!id) {
     return notFound();

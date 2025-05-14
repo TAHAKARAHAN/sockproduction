@@ -38,7 +38,7 @@ export default function BomSection({ formState, handleBomItemChange, addBomItem,
             {bomItems.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                  No BOM items added yet. Click "Add Item" to begin.
+                  No BOM items added yet. Click &quot;Add Item&quot; to begin.
                 </td>
               </tr>
             ) : (

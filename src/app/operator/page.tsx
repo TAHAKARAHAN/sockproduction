@@ -2,14 +2,11 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Html5Qrcode } from "html5-qrcode";
-import { useRouter } from "next/navigation";
 
 // Production status types
 type ProductionStatus = 
   | "Üretim" 
   | "Burun Dikişi" 
-  | "Yıkama" 
-  | "Kurutma" 
   | "Paketleme" 
   | "Tamamlandı";
 
@@ -33,8 +30,33 @@ interface Variant {
   assignedQrCode?: string; // Store the assigned QR code
 }
 
+// Interface for the raw variant data parsed from 'notlar'
+interface ParsedVariant {
+  id: string;
+  model?: string;
+  renk?: string;
+  beden?: string;
+  adet?: number;
+  // Allow other properties that might exist in the JSON
+  [key: string]: unknown;
+}
+
+// Interface for the parsed 'notlar' JSON object
+interface ParsedNotes {
+  variants?: ParsedVariant[];
+  qrCodes?: { 
+    [key: string]: { 
+      qrCode: string; 
+      quantity: number; 
+      // Allow other properties that might exist in the JSON
+      [key: string]: unknown; 
+    } 
+  };
+  // Allow other properties that might exist in the JSON
+  [key: string]: unknown;
+}
+
 export default function OperatorPage() {
-  const router = useRouter();
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -104,14 +126,25 @@ export default function OperatorPage() {
     try {
       // Parse variants from production notes
       if (production.notlar) {
-        const parsedNotes = JSON.parse(production.notlar);
+        const parsedNotes: ParsedNotes = JSON.parse(production.notlar);
         if (parsedNotes.variants && Array.isArray(parsedNotes.variants)) {
           // Check if any variants have assigned QR codes
-          const variantsWithQrCodes = parsedNotes.variants.map((variant: any) => {
-            if (parsedNotes.qrCodes && parsedNotes.qrCodes[variant.id]) {
-              variant.assignedQrCode = parsedNotes.qrCodes[variant.id].qrCode;
+          const variantsWithQrCodes: Variant[] = parsedNotes.variants.map((pVariant: ParsedVariant) => {
+            let assignedQrCodeValue: string | undefined = undefined;
+            // Ensure qrCodes and the specific variant's QR code data exist
+            if (parsedNotes.qrCodes && parsedNotes.qrCodes[pVariant.id] && parsedNotes.qrCodes[pVariant.id].qrCode) {
+              assignedQrCodeValue = parsedNotes.qrCodes[pVariant.id].qrCode;
             }
-            return variant;
+            
+            // Construct a full Variant object, providing defaults for required fields
+            return {
+              id: pVariant.id, // id is expected to be present in ParsedVariant
+              model: pVariant.model || "", // Default to empty string if model is missing
+              renk: pVariant.renk || "",   // Default to empty string if renk is missing
+              beden: pVariant.beden || "", // Default to empty string if beden is missing
+              adet: typeof pVariant.adet === 'number' ? pVariant.adet : 0, // Default to 0 if adet is missing or not a number
+              assignedQrCode: assignedQrCodeValue,
+            };
           });
           setVariants(variantsWithQrCodes);
           
@@ -151,10 +184,10 @@ export default function OperatorPage() {
     const maxQuantity = selectedVariant?.adet || 0;
     
     if (value > maxQuantity) {
-      setQuantityError(`Üretim adedi, varyant adedini (${maxQuantity}) aşamaz`);
+      setQuantityError(`Adet, varyant adedini (${maxQuantity}) aşamaz`);
       setProductionQuantity(value);
     } else if (value <= 0) {
-      setQuantityError("Üretim adedi 0'dan büyük olmalıdır");
+      setQuantityError("Adet 0'dan büyük olmalıdır");
       setProductionQuantity(value);
     } else {
       setQuantityError(null);
@@ -184,14 +217,14 @@ export default function OperatorPage() {
     const maxQuantity = selectedVariant?.adet || 0;
     
     // If production stage is selected and quantity is not set or invalid
-    if (currentStage === "Üretim") {
+    if ((currentStage === "Üretim" || currentStage === "Paketleme")) {
       if (productionQuantity <= 0) {
-        setMessage({text: "Lütfen üretim adedi girin", type: "error"});
+        setMessage({text: "Lütfen adet girin", type: "error"});
         return;
       }
       
       if (productionQuantity > maxQuantity) {
-        setMessage({text: `Üretim adedi, varyant adedini (${maxQuantity}) aşamaz`, type: "error"});
+        setMessage({text: `Adet, varyant adedini (${maxQuantity}) aşamaz`, type: "error"});
         return;
       }
     }
@@ -357,7 +390,7 @@ export default function OperatorPage() {
       
       // Create update payload with only fields that exist in the database schema
       // Other fields will be handled by the API and stored in the notlar JSON
-      const updatePayload: any = {
+      const updatePayload: Record<string, unknown> = {
         durum: currentStage,
         tamamlanma: getCompletionPercentage(currentStage),
         scannedCode: scannedQrCode,
@@ -376,6 +409,10 @@ export default function OperatorPage() {
         // For initial production stage, assign the QR code and quantity
         if (currentStage === "Üretim") {
           updatePayload.assignQrCode = true;
+          updatePayload.quantity = productionQuantity;
+        }
+        // For Paketleme, send quantity as well
+        if (currentStage === "Paketleme") {
           updatePayload.quantity = productionQuantity;
         }
       }
@@ -397,6 +434,7 @@ export default function OperatorPage() {
         try {
           const errorData = await updateResponse.json();
           errorDetail = errorData.message || errorData.error || errorData.details || '';
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
           // If can't parse JSON, use status text
           errorDetail = updateResponse.statusText;
@@ -433,7 +471,7 @@ export default function OperatorPage() {
       if (selectedVariant) {
         successMessage += ` (${selectedVariant.renk} / ${selectedVariant.beden})`;
       }
-      if (currentStage === "Üretim" && productionQuantity > 0) {
+      if ((currentStage === "Üretim" || currentStage === "Paketleme") && productionQuantity > 0) {
         successMessage += ` - ${productionQuantity} adet`;
       }
       
@@ -443,7 +481,7 @@ export default function OperatorPage() {
       });
       
       // Reset quantity after successful update
-      if (currentStage === "Üretim") {
+      if (currentStage === "Üretim" || currentStage === "Paketleme") {
         setProductionQuantity(0);
       }
       
@@ -481,11 +519,9 @@ export default function OperatorPage() {
   // Helper to determine completion percentage based on stage
   const getCompletionPercentage = (stage: ProductionStatus): number => {
     switch (stage) {
-      case "Üretim": return 20;
-      case "Burun Dikişi": return 40;
-      case "Yıkama": return 60;
-      case "Kurutma": return 80;
-      case "Paketleme": return 90;
+      case "Üretim": return 25;
+      case "Burun Dikişi": return 50;
+      case "Paketleme": return 75;
       case "Tamamlandı": return 100;
       default: return 0;
     }
@@ -646,7 +682,7 @@ export default function OperatorPage() {
           <h2 className="text-xl font-medium text-gray-800 dark:text-white mb-4">
             Üretim Aşaması Seçin
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
             <StageButton 
               stage="Üretim" 
               isActive={currentStage === "Üretim"} 
@@ -656,16 +692,6 @@ export default function OperatorPage() {
               stage="Burun Dikişi" 
               isActive={currentStage === "Burun Dikişi"} 
               onClick={() => setCurrentStage("Burun Dikişi")} 
-            />
-            <StageButton 
-              stage="Yıkama" 
-              isActive={currentStage === "Yıkama"} 
-              onClick={() => setCurrentStage("Yıkama")} 
-            />
-            <StageButton 
-              stage="Kurutma" 
-              isActive={currentStage === "Kurutma"} 
-              onClick={() => setCurrentStage("Kurutma")} 
             />
             <StageButton 
               stage="Paketleme" 
@@ -680,11 +706,11 @@ export default function OperatorPage() {
             />
           </div>
           
-          {/* Quantity input for Production stage */}
-          {currentStage === "Üretim" && (
+          {/* Quantity input for Production and Paketleme stages */}
+          {(currentStage === "Üretim" || currentStage === "Paketleme") && (
             <div className="mt-5 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
               <h3 className="text-md font-medium text-yellow-800 dark:text-yellow-300 mb-2">
-                Üretim Adedi
+                {currentStage === "Üretim" ? "Üretim Adedi" : "Paketleme Adedi"}
               </h3>
               <div className="flex items-center">
                 <input
@@ -693,7 +719,7 @@ export default function OperatorPage() {
                   max={selectedVariant?.adet || 0}
                   value={productionQuantity || ''}
                   onChange={handleQuantityChange}
-                  placeholder="Üretilecek adet sayısını girin"
+                  placeholder={currentStage === "Üretim" ? "Üretilecek adet sayısını girin" : "Paketlenecek adet sayısını girin"}
                   className={`w-full px-4 py-2.5 border ${
                     quantityError 
                       ? 'border-red-500 dark:border-red-500' 
@@ -705,7 +731,7 @@ export default function OperatorPage() {
                 <p className="mt-2 text-sm text-red-600 dark:text-red-400">{quantityError}</p>
               )}
               <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2">
-                * Seçilen varyant için maksimum üretim adedi: <strong>{selectedVariant?.adet || 0}</strong>
+                * Seçilen varyant için maksimum adet: <strong>{selectedVariant?.adet || 0}</strong>
               </p>
             </div>
           )}
@@ -815,14 +841,14 @@ export default function OperatorPage() {
                   onClick={startScanning}
                   className={`px-6 py-3 rounded-lg transition-all flex items-center ${
                     !selectedProduction || 
-                    (currentStage === "Üretim" && (productionQuantity <= 0 || !!quantityError))
+                    ((currentStage === "Üretim" || currentStage === "Paketleme") && (productionQuantity <= 0 || !!quantityError))
                       ? "bg-gray-300 text-gray-600 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed" 
                       : "bg-blue-600 text-white hover:bg-blue-700"
                   }`}
                   disabled={
                     isUpdating || 
                     !selectedProduction || 
-                    (currentStage === "Üretim" && (productionQuantity <= 0 || !!quantityError))
+                    ((currentStage === "Üretim" || currentStage === "Paketleme") && (productionQuantity <= 0 || !!quantityError))
                   }
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -847,9 +873,9 @@ export default function OperatorPage() {
             <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
               {!selectedProduction 
                 ? "Lütfen önce bir üretim seçin" 
-                : currentStage === "Üretim" && productionQuantity <= 0
-                ? "Lütfen üretim adedi girin ve QR kod okutun"
-                : currentStage === "Üretim" && !!quantityError
+                : (currentStage === "Üretim" || currentStage === "Paketleme") && productionQuantity <= 0
+                ? "Lütfen adet girin ve QR kod okutun"
+                : (currentStage === "Üretim" || currentStage === "Paketleme") && !!quantityError
                 ? quantityError
                 : qrAssignmentMode
                 ? "Bu varyant için ilk QR kodu okutun. Bu kod varyanta atanacak."

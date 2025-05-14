@@ -23,8 +23,8 @@ export default function UrunKimligiPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [ureticiFilter, setUreticiFilter] = useState("");
-  const [sortField, setSortField] = useState<keyof ProductIdentity>('id');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField] = useState<keyof ProductIdentity>('id');
+  const [sortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Enhanced fetch with refresh capability
   useEffect(() => {
@@ -67,11 +67,11 @@ export default function UrunKimligiPage() {
           setLoading(false);
           setError(null);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         clearTimeout(timeoutId);
         console.error("[UI] Error fetching product identities:", err);
 
-        if (retries > 0 && err.name !== 'AbortError') {
+        if (retries > 0 && err instanceof Error && err.name !== 'AbortError') {
           console.log(`[UI] Retrying... ${retries} attempts left`);
           const delay = Math.pow(2, 3 - retries - 1) * 500;
           setTimeout(() => fetchData(retries - 1), delay);
@@ -79,11 +79,12 @@ export default function UrunKimligiPage() {
         }
 
         if (isMounted) {
-          if (err.name === 'AbortError') {
+          if (err instanceof Error && err.name === 'AbortError') {
             console.log('[UI] Request timed out');
             setError("Veri yükleme zaman aşımına uğradı. Lütfen tekrar deneyin.");
           } else {
-            setError(`Bağlantı hatası: ${err.message}. Lütfen tekrar deneyin.`);
+            const errorMessage = err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu';
+            setError(`Bağlantı hatası: ${errorMessage}. Lütfen tekrar deneyin.`);
           }
           
           setUrunKimlikleri([]);
@@ -99,36 +100,9 @@ export default function UrunKimligiPage() {
     };
   }, []);
 
-  const refreshData = () => {
-    setLoading(true);
-    fetch('/api/product-identities', { 
-      cache: 'no-store',
-      headers: { 
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setUrunKimlikleri(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Error refreshing data:", err);
-        setLoading(false);
-      });
-  };
 
   const uniqueUreticiler = [...new Set(urunKimlikleri.map(item => item.uretici))];
 
-  const handleSort = (field: keyof ProductIdentity) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
 
   const filteredAndSortedUrunKimlikleri = urunKimlikleri
     .filter(urun => {
@@ -156,14 +130,6 @@ export default function UrunKimligiPage() {
         : bValue.localeCompare(aValue);
     });
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
-    } catch (e) {
-      return dateString || "-";
-    }
-  };
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">

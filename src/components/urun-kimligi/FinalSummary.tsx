@@ -2,10 +2,10 @@ import React from "react";
 import Image from "next/image";
 
 interface FinalSummaryProps {
-  formState: any;
+  formState: unknown;
 }
 
-const FinalSummary = ({ formState }: FinalSummaryProps) => {
+const FinalSummary = ({ }: FinalSummaryProps) => {
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden shadow-md">
       <table className="w-full border-collapse table-auto">

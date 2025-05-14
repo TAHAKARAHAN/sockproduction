@@ -4,12 +4,13 @@ import Link from "next/link";
 import { Production, ProductionStatus } from "@/lib/production-db";
 
 // Status color mapping for visual indication
-const statusColors = {
+const statusColors: Record<ProductionStatus, string> = {
   "Burun Dikişi": "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
   "Yıkama": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300",
   "Kurutma": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300",
   "Paketleme": "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  "Tamamlandı": "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+  "Tamamlandı": "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+  "Üretim": "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
 };
 
 export default function UretimTakibiPage() {
@@ -34,7 +35,7 @@ export default function UretimTakibiPage() {
       
       try {
         // Build query string with any filters
-        let queryParams = new URLSearchParams();
+        const queryParams = new URLSearchParams();
         if (filterStatus) {
           queryParams.append('status', filterStatus);
         }
@@ -63,7 +64,7 @@ export default function UretimTakibiPage() {
           setLoading(false);
           setError(null);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching production data:", err);
         if (isMounted) {
           setError("Üretim bilgileri yüklenirken bir hata oluştu.");
@@ -89,15 +90,6 @@ export default function UretimTakibiPage() {
   });
 
   // Format date for display
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    try {
-      const date = new Date(dateString);
-      return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
-    } catch (e) {
-      return dateString;
-    }
-  };
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -188,7 +180,7 @@ export default function UretimTakibiPage() {
                 <input
                   type="text"
                   id="search"
-                  placeholder="Ürün adı, style no, müşteri veya sipariş ID ara..."
+                  placeholder="Ürün adı, sipariş no, müşteri veya artikel no ara..."
                   className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-all"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -269,7 +261,7 @@ export default function UretimTakibiPage() {
                       Ürün Bilgisi
                     </th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Sipariş ID
+                      Artikel No
                     </th>
                     <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Müşteri
@@ -299,14 +291,14 @@ export default function UretimTakibiPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <p className="text-gray-900 dark:text-gray-100 font-medium">{production.urun_adi}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Style No: {production.style_no}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Sipariş No: {production.style_no}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200">{production.siparis_id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200">{production.musteri}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200">{production.miktar.toLocaleString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${statusColors[production.durum as ProductionStatus]}`}>
+                        <span className={`px-3 py-1.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${statusColors[production.durum as ProductionStatus] || "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"}`}>
                           {production.durum}
                         </span>
                       </td>

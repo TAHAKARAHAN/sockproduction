@@ -5,7 +5,7 @@ import { queryDB } from '@/lib/db';
 interface ProductionRow {
   id: string;
   style_no: string;
-  [key: string]: any; // For any additional fields that might be returned
+  [key: string]: unknown; // For any additional fields that might be returned
 }
 
 /**
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     `;
     
     const result = await queryDB(query, [`%${code}%`]);
-    const productions = result.rows;
+    const productions = result.rows as ProductionRow[]; // Assert type here
     
     // Return whether the QR code exists and where it's used
     return NextResponse.json({
@@ -46,11 +46,11 @@ export async function GET(request: Request) {
       })) : []
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[API] Error checking QR code:`, error);
     
     return NextResponse.json(
-      { error: 'Failed to check QR code', details: error.message || 'Unknown error' },
+      { error: 'Failed to check QR code', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

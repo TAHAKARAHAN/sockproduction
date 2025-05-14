@@ -1,28 +1,40 @@
-import { queryDB } from './db';
+import { queryDB } from './db'; // Assuming queryDB is in db.ts
 
-// Production status types
-export type ProductionStatus = 
+// Define ProductionStatus type
+export type ProductionStatus =
+  | "Üretim"
   | "Burun Dikişi"
   | "Yıkama"
   | "Kurutma"
   | "Paketleme"
   | "Tamamlandı";
 
-// Production interface matching database structure
+// Define ProductionVariant interface
+export interface ProductionVariant {
+  id: string; // Unique identifier for the variant
+  model?: string;
+  renk?: string;
+  beden?: string;
+  adet?: number;
+  [key: string]: unknown; // Allow other dynamic properties from notlar
+}
+
+// Define Production interface
 export interface Production {
-  id: string;
-  style_no: string; 
-  urun_adi: string; 
-  siparis_id: string; 
+  id: string; // Changed from number to string to match usage
+  siparis_id: string; // artikelNo
+  style_no: string; // siparisNo in UI
+  urun_adi: string;
   musteri: string;
-  miktar: number;
-  baslangic_tarihi: string; 
-  tahmini_tamamlanma: string; 
+  miktar: number; // adet in UI
+  baslangic_tarihi: string;
+  tahmini_tamamlanma: string;
   durum: ProductionStatus;
   tamamlanma: number;
-  notlar?: string;
+  notlar?: string | null; // JSON string for additional details like variants, QR codes
   created_at?: string;
   updated_at?: string;
+  variants?: ProductionVariant[]; // Optional: if variants are directly on the object
 }
 
 /**
@@ -33,14 +45,14 @@ export async function getAllProductions(options: {
   order?: 'asc' | 'desc'; 
   limit?: number;
   status?: string;
-} = {}) {
+} = {}): Promise<Production[]> {
   console.log('[DB] Fetching all productions');
   const start = Date.now();
   
   try {
     // Build query with conditional parameters
     let query = 'SELECT * FROM productions';
-    const queryParams: any[] = [];
+    const queryParams: unknown[] = [];
     
     // Add WHERE clause if status filter provided
     if (options.status) {
@@ -80,12 +92,11 @@ export async function getAllProductions(options: {
 /**
  * Get a single production by ID
  */
-export async function getProductionById(id: string) {
+export async function getProductionById(id: string): Promise<Production | null> {
   console.log(`[DB] Fetching production with ID: ${id}`);
   const start = Date.now();
   
   try {
-    // Don't convert ID to number - keep as string to match database format
     console.log(`[DB] Executing query: SELECT * FROM productions WHERE id = '${id}'`);
     const result = await queryDB('SELECT * FROM productions WHERE id = $1', [id]);
     console.log(`[DB] Executed query in ${Date.now() - start}ms`);
@@ -99,7 +110,7 @@ export async function getProductionById(id: string) {
       console.log(`[DB] No production found with ID: ${id}`);
     }
     
-    return result.rows[0] as Production | undefined;
+    return result.rows[0] as Production | null;
   } catch (error) {
     const duration = Date.now() - start;
     console.error(`[DB] Error fetching production with ID: ${id} after ${duration}ms:`, error);
@@ -110,15 +121,40 @@ export async function getProductionById(id: string) {
 /**
  * Create a new production
  */
-export async function createProduction(data: Omit<Production, 'id' | 'created_at' | 'updated_at'>) {
+export async function createProduction(data: Omit<Production, 'id' | 'created_at' | 'updated_at' | 'tamamlanma' | 'durum'> & { durum?: ProductionStatus, tamamlanma?: number }): Promise<Production> {
   console.log(`[DB] Creating new production for ${data.style_no} - ${data.urun_adi}`);
   const start = Date.now();
   
   try {
-    // Generate a new ID with 'P' prefix and padded number
+    // Get base count from database
     const countResult = await queryDB('SELECT COUNT(*) FROM productions');
-    const count = parseInt(countResult.rows[0].count) + 1;
-    const newId = `P${count.toString().padStart(3, '0')}`; // P001, P002, etc.
+    let count = parseInt((countResult.rows[0] as { count: string }).count) + 1;
+    let newId = `P${count.toString().padStart(3, '0')}`; // P001, P002, etc.
+    
+    // Check if ID already exists and find a unique one
+    let idExists = true;
+    let attempts = 0;
+    const maxAttempts = 100; // Prevent infinite loops
+    
+    while (idExists && attempts < maxAttempts) {
+      // Check if this ID already exists
+      const checkResult = await queryDB('SELECT id FROM productions WHERE id = $1', [newId]);
+      
+      if (checkResult.rows.length === 0) {
+        // ID doesn't exist, we can use it
+        idExists = false;
+      } else {
+        // ID exists, try the next number
+        count++;
+        newId = `P${count.toString().padStart(3, '0')}`;
+        attempts++;
+        console.log(`[DB] ID ${newId} already exists, trying next ID: ${newId}`);
+      }
+    }
+    
+    if (attempts >= maxAttempts) {
+      throw new Error(`Failed to generate unique production ID after ${maxAttempts} attempts`);
+    }
     
     console.log(`[DB] Generated new ID: ${newId} for production`);
     
@@ -143,7 +179,7 @@ export async function createProduction(data: Omit<Production, 'id' | 'created_at
     );
     
     const duration = Date.now() - start;
-    console.log(`[DB] Created new production with ID: ${result.rows[0].id} in ${duration}ms`);
+    console.log(`[DB] Created new production with ID: ${(result.rows[0] as Production).id} in ${duration}ms`);
     
     return result.rows[0] as Production;
   } catch (error) {
@@ -156,19 +192,17 @@ export async function createProduction(data: Omit<Production, 'id' | 'created_at
 /**
  * Update an existing production
  */
-export async function updateProduction(id: string, data: Partial<Omit<Production, 'id' | 'created_at' | 'updated_at'>>) {
+export async function updateProduction(id: string, data: Partial<Production>): Promise<Production | null> {
   console.log(`[DB] Updating production with ID: ${id}`);
   const start = Date.now();
   
   try {
-    // Filter out undefined values and non-existent columns
-    // Only keep fields that exist in the database schema
     const validFields = [
       'style_no', 'urun_adi', 'siparis_id', 'musteri', 'miktar',
       'baslangic_tarihi', 'tahmini_tamamlanma', 'durum', 'tamamlanma', 'notlar'
     ];
     
-    const filteredData: Record<string, any> = {};
+    const filteredData: Record<string, unknown> = {};
     
     Object.keys(data).forEach(key => {
       if (validFields.includes(key) && data[key as keyof typeof data] !== undefined) {
@@ -176,7 +210,6 @@ export async function updateProduction(id: string, data: Partial<Omit<Production
       }
     });
     
-    // Log what we're actually updating
     console.log(`[DB] Updating fields: ${Object.keys(filteredData).join(', ')}`);
     
     if (Object.keys(filteredData).length === 0) {
@@ -184,7 +217,6 @@ export async function updateProduction(id: string, data: Partial<Omit<Production
       return null;
     }
     
-    // Dynamically build the SET clause and parameter array
     const fields = Object.keys(filteredData);
     const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
     const values = fields.map(field => filteredData[field]);
@@ -212,7 +244,7 @@ export async function updateProduction(id: string, data: Partial<Omit<Production
 /**
  * Delete a production
  */
-export async function deleteProduction(id: string) {
+export async function deleteProduction(id: string): Promise<Production | null> {
   console.log(`[DB] Deleting production with ID: ${id}`);
   const start = Date.now();
   
@@ -223,7 +255,7 @@ export async function deleteProduction(id: string) {
     
     if (result.rowCount === 0) {
       console.log(`[DB] Production with ID: ${id} not found for deletion`);
-      return undefined;
+      return null;
     }
     
     console.log(`[DB] Deleted production with ID: ${id} in ${duration}ms`);
@@ -277,7 +309,7 @@ export async function getProductionsWithQRCode(qrCode: string): Promise<Producti
     const values = [`%${qrCode}%`];
     
     const result = await queryDB(query, values);
-    return result.rows;
+    return result.rows as Production[];
   } catch (error) {
     console.error('Error in getProductionsWithQRCode:', error);
     throw error;

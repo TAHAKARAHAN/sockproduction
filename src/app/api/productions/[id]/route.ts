@@ -1,11 +1,32 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getProductionById, updateProduction, deleteProduction, getProductionsWithQRCode } from '@/lib/production-db';
+
+// Define an interface for the variant data stored in 'notlar' and expected in 'updateData'
+interface ApiVariant {
+  id: string;
+  model?: string;
+  renk?: string;
+  beden?: string;
+  adet?: number;
+  // Allow other properties as they might exist in notlar
+  [key: string]: unknown; 
+}
+
+interface UpdateData {
+  durum: string; // Should ideally be ProductionStatus type if shared
+  tamamlanma: number;
+  scannedCode?: string;
+  operatorId?: string;
+  assignQrCode?: boolean;
+  quantity?: number;
+  variant?: ApiVariant; // Use ApiVariant here
+}
 
 /**
  * GET handler to fetch a single production by ID
  */
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json(
       { error: 'Production ID is required' },
@@ -34,12 +55,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
     console.log(`[API] GET /api/productions/${id} - Successfully fetched production in ${duration}ms`);
     
     return NextResponse.json(production);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     console.error(`[API] GET /api/productions/${id} - Failed after ${duration}ms:`, error);
     
     return NextResponse.json(
-      { error: 'Failed to fetch production', details: error.message || 'Unknown error' },
+      { error: 'Failed to fetch production', details: (error as Error).message || 'Unknown error' },
       { status: 500 }
     );
   }
@@ -48,8 +69,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 /**
  * PATCH handler to update a production
  */
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json(
       { error: 'Production ID is required' },
@@ -69,20 +90,26 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       );
     }
 
-    const updateData = await request.json();
+    const updateData = await request.json() as UpdateData;
     console.log(`[API] PATCH payload:`, updateData);
     
-    const standardFields: Record<string, any> = {
+    const standardFields: Record<string, unknown> = {
       durum: updateData.durum,
       tamamlanma: updateData.tamamlanma
     };
     
-    let notlarObject: any = {};
+    let notlarObject: {
+      scanHistory?: unknown[];
+      qrCodes?: Record<string, unknown>;
+      variants?: ApiVariant[]; // Ensure variants is typed
+      [key: string]: unknown; // Allow other dynamic properties
+    } = {};
+
     try {
       if (currentProduction.notlar) {
         notlarObject = JSON.parse(currentProduction.notlar);
       }
-    } catch (e) {
+    } catch {
       console.warn(`[API] Failed to parse existing notlar as JSON, initializing as empty object`);
       notlarObject = {};
     }
@@ -97,7 +124,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         code: string;
         stage: string;
         operator: string;
-        variant?: any;
+        variant?: ApiVariant; // Use ApiVariant
       }
       
       const scanEntry: ScanEntry = {
@@ -120,19 +147,19 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     
     if (updateData.assignQrCode && updateData.variant && updateData.scannedCode) {
       const qrCodeCheck = await getProductionsWithQRCode(updateData.scannedCode);
-      const isCodeAssignedElsewhere = qrCodeCheck.some(p => {
+      const isCodeAssignedElsewhere = qrCodeCheck.some((p: { id: string; notlar?: string | null }) => {
         if (p.id.toString() === id) {
           try {
-            const notes = JSON.parse(p.notlar || '{}');
-            if (notes.qrCodes) {
+            const notes = JSON.parse(p.notlar || '{}') as { qrCodes?: Record<string, { qrCode: string }> };
+            if (notes.qrCodes && updateData.variant) {
               const variantKeys = Object.keys(notes.qrCodes);
               return variantKeys.some(vid => 
-                vid !== updateData.variant.id && 
-                notes.qrCodes[vid].qrCode === updateData.scannedCode
+                vid !== updateData.variant!.id && 
+                notes.qrCodes![vid].qrCode === updateData.scannedCode
               );
             }
-          } catch (e) {
-            console.error('[API] Error parsing production notes for QR check:', e);
+          } catch (error) {
+            console.error('[API] Error parsing production notes for QR check:', error);
           }
           return false;
         }
@@ -162,20 +189,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         notlarObject.variants = [];
       }
       
-      const existingVariantIndex = notlarObject.variants.findIndex(
-        (v: any) => v.id === updateData.variant.id
+      const variantsArr = notlarObject.variants; // Now typed as ApiVariant[]
+      const existingVariantIndex = variantsArr.findIndex(
+        (v: ApiVariant) => v.id === updateData.variant!.id // v is ApiVariant
       );
       
       if (existingVariantIndex >= 0) {
-        notlarObject.variants[existingVariantIndex] = {
-          ...notlarObject.variants[existingVariantIndex],
-          ...updateData.variant,
-          adet: updateData.quantity || notlarObject.variants[existingVariantIndex].adet || 0
+        variantsArr[existingVariantIndex] = {
+          ...variantsArr[existingVariantIndex], // This is ApiVariant
+          ...updateData.variant, // This is ApiVariant (or part of it)
+          adet: updateData.quantity !== undefined ? updateData.quantity : variantsArr[existingVariantIndex].adet || 0
         };
       } else {
-        notlarObject.variants.push({
+        variantsArr.push({
           ...updateData.variant,
-          adet: updateData.quantity || 0
+          adet: updateData.quantity !== undefined ? updateData.quantity : 0
         });
       }
     }
@@ -198,12 +226,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     console.log(`[API] PATCH /api/productions/${id} - Successfully updated production in ${duration}ms`);
     
     return NextResponse.json(updatedProduction);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     console.error(`[API] PATCH /api/productions/${id} - Failed after ${duration}ms:`, error);
     
     return NextResponse.json(
-      { error: 'Failed to update production', details: error.message || 'Unknown error' },
+      { error: 'Failed to update production', details: (error as Error).message || 'Unknown error' },
       { status: 500 }
     );
   }
@@ -212,8 +240,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 /**
  * DELETE handler to delete a production
  */
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json(
       { error: 'Production ID is required' },
@@ -241,7 +269,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     console.log(`[API] DELETE /api/productions/${id} - Successfully deleted production in ${duration}ms`);
     
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     console.error(`[API] DELETE /api/productions/${id} - Failed after ${duration}ms:`, error);
     

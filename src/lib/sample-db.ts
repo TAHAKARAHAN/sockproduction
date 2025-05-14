@@ -26,8 +26,8 @@ interface SampleRow {
   gauge?: string;
   toe_closing?: string;
   notlar?: string;
-  zemin_iplikleri: any;
-  desen_iplikleri: any;
+  zemin_iplikleri: unknown;
+  desen_iplikleri: unknown;
   toplam_agirlik: string;
   created_at?: string;
   updated_at?: string;
@@ -61,6 +61,35 @@ export interface Sample {
   updated_at?: string;
 }
 
+// Helper function to parse SampleRow into Sample
+function parseSampleRow(row: SampleRow): Sample {
+  const parseYarnDetails = (yarnData: unknown, fieldName: string): YarnDetail[] => {
+    if (typeof yarnData === 'string' && yarnData) {
+      try {
+        const parsed = JSON.parse(yarnData);
+        // Ensure what's parsed is an array. A more robust validation could check item structure.
+        return Array.isArray(parsed) ? parsed as YarnDetail[] : [];
+      } catch (e) {
+        console.error(`[DB] Error parsing ${fieldName} for sample ID ${row.id}:`, e, "Raw data:", yarnData);
+        return [];
+      }
+    } else if (Array.isArray(yarnData)) {
+      // If it's already an array (e.g., from mock data or if DB returns parsed JSON directly)
+      return yarnData as YarnDetail[];
+    }
+    // Default to empty array if null, undefined, or not a string/array that can be parsed
+    return [];
+  };
+
+  return {
+    ...row,
+    id: Number(row.id), // Ensure id is number
+    zemin_iplikleri: parseYarnDetails(row.zemin_iplikleri, 'zemin_iplikleri'),
+    desen_iplikleri: parseYarnDetails(row.desen_iplikleri, 'desen_iplikleri'),
+    tarih: row.tarih ? new Date(row.tarih).toLocaleDateString('tr-TR') : '',
+  };
+}
+
 // Ensure this is a server-side function only
 export async function getAllSamples(): Promise<Sample[]> {
   // Check if we're on the server
@@ -77,14 +106,8 @@ export async function getAllSamples(): Promise<Sample[]> {
       'SELECT * FROM numuneler ORDER BY created_at DESC'
     );
     
-    // Parse JSON fields - fixed the TypeScript error by adding proper type
-    const samples = result.rows.map((sample: SampleRow) => ({
-      ...sample,
-      zemin_iplikleri: sample.zemin_iplikleri || [],
-      desen_iplikleri: sample.desen_iplikleri || [],
-      // Convert date to formatted string (if needed)
-      tarih: sample.tarih ? new Date(sample.tarih).toLocaleDateString('tr-TR') : '',
-    }));
+    // Parse JSON fields by mapping through the helper function
+    const samples = (result.rows as SampleRow[]).map(parseSampleRow);
     
     const duration = Date.now() - start;
     console.log(`[DB] Fetched ${samples.length} samples in ${duration}ms`);
@@ -154,24 +177,21 @@ export async function getSampleById(id: string): Promise<Sample | undefined> {
     const duration = Date.now() - start;
     console.log(`[DB] ${result.rows.length ? 'Found' : 'Did not find'} sample with ID: ${id} in ${duration}ms`);
     
+    if (result.rows.length > 0) {
+      return parseSampleRow(result.rows[0] as SampleRow);
+    }
+
     // If no results, try using the ID as a string
     if (result.rows.length === 0 && typeof parsedId === 'number') {
       console.log(`[DB] Retrying with string ID: ${id}`);
       const stringResult = await queryDB(
         'SELECT * FROM numuneler WHERE id = $1',
-        [id]
+        [id] // Use original string id
       );
       
       if (stringResult.rows.length > 0) {
         console.log(`[DB] Found sample using string ID`);
-        const sample: Sample = {
-          ...stringResult.rows[0],
-          zemin_iplikleri: stringResult.rows[0].zemin_iplikleri || [],
-          desen_iplikleri: stringResult.rows[0].desen_iplikleri || [],
-          tarih: stringResult.rows[0].tarih ? new Date(stringResult.rows[0].tarih).toLocaleDateString('tr-TR') : '',
-        };
-        
-        return sample;
+        return parseSampleRow(stringResult.rows[0] as SampleRow);
       }
     }
     
@@ -183,9 +203,9 @@ export async function getSampleById(id: string): Promise<Sample | undefined> {
         
         if (tableInfo.rows.length > 0) {
           const sampleCount = await queryDB('SELECT COUNT(*) FROM numuneler');
-          console.log(`[DB] Total samples in database: ${sampleCount.rows[0].count}`);
+          console.log(`[DB] Total samples in database: ${(sampleCount.rows[0] as { count: string | number }).count}`);
           
-          if (parseInt(sampleCount.rows[0].count) > 0) {
+          if (parseInt((sampleCount.rows[0] as { count: string }).count) > 0) {
             const firstSample = await queryDB('SELECT id FROM numuneler LIMIT 1');
             console.log(`[DB] First sample ID in database: ${JSON.stringify(firstSample.rows[0])}`);
           }
@@ -197,15 +217,7 @@ export async function getSampleById(id: string): Promise<Sample | undefined> {
       return undefined;
     }
     
-    // Parse JSON fields and format date
-    const sample: Sample = {
-      ...result.rows[0],
-      zemin_iplikleri: result.rows[0].zemin_iplikleri || [],
-      desen_iplikleri: result.rows[0].desen_iplikleri || [],
-      tarih: result.rows[0].tarih ? new Date(result.rows[0].tarih).toLocaleDateString('tr-TR') : '',
-    };
-    
-    return sample;
+    return undefined; // Should have returned earlier if found
   } catch (error) {
     const duration = Date.now() - start;
     console.error(`[DB] Failed to retrieve sample with ID: ${id} after ${duration}ms:`, error);
@@ -221,8 +233,35 @@ export async function createSample(sampleData: Omit<Sample, 'id' | 'created_at' 
   const start = Date.now();
   
   try {
-    // Convert date string to proper format if needed
-    const dateValue = sampleData.tarih ? new Date(sampleData.tarih) : new Date();
+    // Parse date correctly - handle Turkish date format (DD.MM.YYYY)
+    let dateValue: Date;
+    
+    if (sampleData.tarih) {
+      // Check if it's in Turkish format (DD.MM.YYYY)
+      const turkishDatePattern = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/;
+      const match = sampleData.tarih.match(turkishDatePattern);
+      
+      if (match) {
+        // Convert from DD.MM.YYYY to YYYY-MM-DD for proper Date parsing
+        const day = match[1].padStart(2, '0');
+        const month = match[2].padStart(2, '0');
+        const year = match[3];
+        dateValue = new Date(`${year}-${month}-${day}`);
+      } else {
+        // Try standard date parsing as fallback
+        dateValue = new Date(sampleData.tarih);
+      }
+      
+      // Check if date is valid
+      if (isNaN(dateValue.getTime())) {
+        console.error(`[DB] Invalid date format: "${sampleData.tarih}", using current date instead`);
+        dateValue = new Date();
+      }
+    } else {
+      dateValue = new Date();
+    }
+    
+    console.log(`[DB] Using date value: ${dateValue.toISOString()} for sample creation`);
     
     const result = await queryDB(`
       INSERT INTO numuneler (
@@ -246,23 +285,15 @@ export async function createSample(sampleData: Omit<Sample, 'id' | 'created_at' 
       sampleData.gauge,
       sampleData.toe_closing,
       sampleData.notlar,
-      JSON.stringify(sampleData.zemin_iplikleri),
-      JSON.stringify(sampleData.desen_iplikleri),
+      JSON.stringify(sampleData.zemin_iplikleri || []),
+      JSON.stringify(sampleData.desen_iplikleri || []),
       sampleData.toplam_agirlik
     ]);
     
     const duration = Date.now() - start;
-    console.log(`[DB] Created new sample with ID: ${result.rows[0].id} in ${duration}ms`);
+    console.log(`[DB] Created new sample with ID: ${(result.rows[0] as SampleRow).id} in ${duration}ms`);
     
-    // Parse JSON fields and format date
-    const newSample = {
-      ...result.rows[0],
-      zemin_iplikleri: result.rows[0].zemin_iplikleri || [],
-      desen_iplikleri: result.rows[0].desen_iplikleri || [],
-      tarih: result.rows[0].tarih ? new Date(result.rows[0].tarih).toLocaleDateString('tr-TR') : '',
-    };
-    
-    return newSample;
+    return parseSampleRow(result.rows[0] as SampleRow);
   } catch (error) {
     const duration = Date.now() - start;
     console.error(`[DB] Failed to create sample after ${duration}ms:`, error);
@@ -285,11 +316,11 @@ export async function updateSample(id: string, sampleData: Partial<Sample>): Pro
     
     // Prepare the update fields
     const updateFields: string[] = [];
-    const updateValues: any[] = [];
+    const updateValues: unknown[] = [];
     let paramIndex = 1;
     
     // Helper function to add update fields
-    const addUpdateField = (field: string, value: any) => {
+    const addUpdateField = (field: string, value: unknown) => {
       if (value !== undefined) {
         updateFields.push(`${field} = $${paramIndex}`);
         updateValues.push(value);
@@ -352,15 +383,10 @@ export async function updateSample(id: string, sampleData: Partial<Sample>): Pro
     const duration = Date.now() - start;
     console.log(`[DB] Updated sample with ID: ${id} in ${duration}ms`);
     
-    // Parse JSON fields and format date
-    const updatedSample = {
-      ...result.rows[0],
-      zemin_iplikleri: result.rows[0].zemin_iplikleri || [],
-      desen_iplikleri: result.rows[0].desen_iplikleri || [],
-      tarih: result.rows[0].tarih ? new Date(result.rows[0].tarih).toLocaleDateString('tr-TR') : '',
-    };
-    
-    return updatedSample;
+    if (result.rows.length > 0) {
+      return parseSampleRow(result.rows[0] as SampleRow);
+    }
+    return undefined; // If update didn't return rows for some reason
   } catch (error) {
     const duration = Date.now() - start;
     console.error(`[DB] Failed to update sample with ID: ${id} after ${duration}ms:`, error);

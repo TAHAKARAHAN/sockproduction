@@ -1,13 +1,10 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Cookies from 'js-cookie';
-import { useRouter } from "next/navigation";
 
 function HomePage() {
   const [userName, setUserName] = useState("Admin");
-  const router = useRouter();
   
   useEffect(() => {
     // Get username from cookie if available

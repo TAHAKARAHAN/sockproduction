@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, ChangeEvent, KeyboardEvent } from "react";
+import { useState, FormEvent, ChangeEvent } from "react";
 import Link from "next/link";
 
 type FormDataType = {
@@ -43,8 +43,8 @@ export default function Page() {
     processTypes: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [, setShowSuccess] = useState(false);
+  const [, setShowConfirmation] = useState(false);
   const [showExample, setShowExample] = useState(false); // Add state for showing example
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
@@ -842,7 +842,7 @@ export default function Page() {
       </div>
       
       <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-        <p>Tüm alanları doldurduktan sonra "Rapor Oluştur" düğmesine tıklayın.</p>
+        <p>Tüm alanları doldurduktan sonra &quot;Rapor Oluştur&quot; düğmesine tıklayın.</p>
         <p>Yardıma ihtiyacınız olursa, <span className="text-blue-600 hover:underline cursor-pointer">yardım sayfasını</span> ziyaret edin.</p>
       </div>
     </div>

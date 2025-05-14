@@ -1,7 +1,8 @@
 import React from "react";
+import { FormState } from "@/app/urun-kimligi/yeni/page";
 
 interface CompanyInfoProps {
-  formState: any;
+  formState: FormState;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
 }
 

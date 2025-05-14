@@ -17,6 +17,16 @@ import {
 import { Bar, Line, Pie, Doughnut } from 'react-chartjs-2';
 import PrintButton from "@/components/PrintButton";
 
+// Import chart data from the separate utility file
+import {
+  monthlyProductionData, 
+  salesByTypeData, 
+  qualityMetricsData, 
+  machineEfficiencyData,
+  initialReports,
+  typeColors
+} from '@/lib/report-data';
+
 // Register ChartJS components
 ChartJS.register(
   CategoryScale,
@@ -30,16 +40,6 @@ ChartJS.register(
   Legend
 );
 
-// Import chart data from the main page (consider moving to a shared utils file in a real app)
-import { 
-  monthlyProductionData, 
-  salesByTypeData, 
-  qualityMetricsData, 
-  machineEfficiencyData,
-  initialReports,
-  typeColors 
-} from "../page";
-
 // Define the Report type to match your data structure
 interface Report {
   id: string;
@@ -52,17 +52,35 @@ interface Report {
   // Add other properties as needed
 }
 
-export default function ReportDetail({ params }: { params: { id: string } }) {
+export default function ReportDetail({ params }: { params: Promise<{ id: string }> }) {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reportId, setReportId] = useState<string | null>(null);
 
+  // Add a useEffect to resolve the Promise-based params
   useEffect(() => {
+    const resolveParams = async () => {
+      try {
+        const resolvedParams = await params;
+        setReportId(resolvedParams.id);
+      } catch (error) {
+        console.error("Failed to resolve params:", error);
+      }
+    };
+    
+    resolveParams();
+  }, [params]);
+
+  // Update to use reportId instead of params.id
+  useEffect(() => {
+    if (!reportId) return;
+
     // In a real app, you'd fetch the report from an API
     // For this demo, we'll use the sample data
-    const foundReport = initialReports.find(r => r.id === params.id);
+    const foundReport = initialReports.find(r => r.id === reportId);
     setReport(foundReport as Report || null);
     setLoading(false);
-  }, [params.id]);
+  }, [reportId]);
 
   if (loading) {
     return (

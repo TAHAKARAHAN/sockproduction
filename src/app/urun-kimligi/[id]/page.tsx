@@ -209,6 +209,7 @@ export default function UrunKimligiDetayPage() {
         if (Array.isArray(parsedItems)) {
           return setBomItems(parsedItems);
         }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         // Fall back to string parsing for older format
       }
@@ -306,7 +307,7 @@ export default function UrunKimligiDetayPage() {
     const measurements: { [key: string]: { [key: string]: string; tolerance: string } } = {};
     
     // Create entries for each measurement type with default values rather than just "-"
-    ALL_MEASUREMENT_TYPES.forEach((type, index) => {
+    ALL_MEASUREMENT_TYPES.forEach((type) => {
       const sizeValues: { [key: string]: string } = {};
       defaultSizes.forEach(size => {
         // Use a base value and add 1-2mm for each size category
@@ -365,13 +366,6 @@ export default function UrunKimligiDetayPage() {
   };
 
   // Generate PDF report - similar to the creation page
-  const generateReport = async () => {
-    // Alert the user that this feature is coming soon
-    alert("PDF rapor oluşturma yakında eklenecek!");
-    
-    // Note: You would implement similar PDF generation logic as in the creation page
-    // This would require importing html2canvas and jsPDF
-  };
 
   // Handle product deletion
   const handleDeleteClick = () => {
@@ -749,11 +743,11 @@ export default function UrunKimligiDetayPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300" 
                           colSpan={(measurementsData?.sizes || ['35-38', '39-42', '43-46']).length}>
                         {/* Ensure we have a default value with type safety */}
-                        {(measurementsData?.measurements?.GRAM as any)?.value || "0,50"}
+                        {(measurementsData?.measurements?.GRAM as { value: string, tolerance: string })?.value || "0,50"}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                         {/* Ensure we have a default value with type safety */}
-                        {(measurementsData?.measurements?.GRAM as any)?.tolerance || "0,10"}
+                        {(measurementsData?.measurements?.GRAM as { value: string, tolerance: string })?.tolerance || "0,10"}
                       </td>
                     </tr>
                   </tbody>

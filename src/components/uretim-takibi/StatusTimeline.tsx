@@ -1,12 +1,9 @@
 import React from "react";
+import StatusBadge from "./StatusBadge";
 
 export type ProductionStatus = 
-  | "Stok G." 
-  | "Numune" 
-  | "Üretim" 
-  | "Dikiş"
-  | "Yıkama"
-  | "Kurutma"
+  | "Üretim"
+  | "Burun Dikişi"
   | "Paketleme"
   | "Tamamlandı";
 
@@ -20,32 +17,24 @@ interface StatusTimelineProps {
   }[];
 }
 
-// Order of production statuses for the timeline
-const statusOrder: ProductionStatus[] = [
-  "Stok G.",
-  "Numune",
+// Define the sequence of statuses for the timeline
+const statusSequence: ProductionStatus[] = [
   "Üretim",
-  "Dikiş",
-  "Yıkama",
-  "Kurutma",
+  "Burun Dikişi",
   "Paketleme",
   "Tamamlandı"
 ];
 
 // Status icons for visual representation
 const statusIcons: Record<ProductionStatus, string> = {
-  "Hammadde Girişi": "M20 3H4a1 1 0 00-1 1v16a1 1 0 001 1h16a1 1 0 001-1V4a1 1 0 00-1-1zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z",
-  "Numune Testi": "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z",
   "Üretim": "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z",
   "Burun Dikişi": "M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13",
-  "Yıkama": "M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12",
-  "Kurutma": "M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z",
   "Paketleme": "M16 3h5m0 0v5m0-5l-6 6M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z",
   "Tamamlandı": "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
 };
 
 const StatusTimeline: React.FC<StatusTimelineProps> = ({ currentStatus, statusHistory }) => {
-  const currentStatusIndex = statusOrder.indexOf(currentStatus);
+  const currentStatusIndex = statusSequence.indexOf(currentStatus);
 
   return (
     <div className="py-6">
@@ -57,14 +46,14 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ currentStatus, statusHi
         <div
           className="hidden sm:block absolute top-6 left-0 h-0.5 bg-blue-500 dark:bg-blue-600 z-0 rounded-full transition-all duration-500"
           style={{
-            width: `${(currentStatusIndex / (statusOrder.length - 1)) * 100}%`,
+            width: `${(currentStatusIndex / (statusSequence.length - 1)) * 100}%`,
             maxWidth: "100%",
           }}
         ></div>
 
         {/* Timeline steps - Circle positioned at the line, text below */}
         <div className="relative z-10 flex justify-between">
-          {statusOrder.map((status, index) => {
+          {statusSequence.map((status, index) => {
             const isCompleted = index < currentStatusIndex;
             const isCurrent = index === currentStatusIndex;
             const historyEntry = statusHistory.find(h => h.status === status);

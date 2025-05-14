@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 interface ProductIdentityFormProps {
-  onSubmit: (data: any) => void;
+  onSubmit: (data: unknown) => void;
   isSubmitting?: boolean;
 }
 
@@ -36,7 +36,7 @@ export default function ProductIdentityForm({ onSubmit, isSubmitting = false }: 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label htmlFor="fixMaterial" className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-            FIX MATERIAL
+            Style No
           </label>
           <input
             type="text"
@@ -51,7 +51,7 @@ export default function ProductIdentityForm({ onSubmit, isSubmitting = false }: 
         
         <div>
           <label htmlFor="materialLocalNo" className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-            Material Local No.
+            Sipariş No
           </label>
           <input
             type="text"
@@ -65,7 +65,7 @@ export default function ProductIdentityForm({ onSubmit, isSubmitting = false }: 
         
         <div>
           <label htmlFor="composition" className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-            COMPOSITION
+            Sipariş ID
           </label>
           <input
             type="text"
@@ -79,7 +79,7 @@ export default function ProductIdentityForm({ onSubmit, isSubmitting = false }: 
         
         <div>
           <label htmlFor="desc" className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-            DESC
+            Artikel No
           </label>
           <input
             type="text"

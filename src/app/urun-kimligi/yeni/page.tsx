@@ -3,9 +3,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import TechnicalSpecs from "@/components/urun-kimligi/TechnicalSpecs";
-import BomSection from "@/components/urun-kimligi/BomSection";
-import ProductSummary from "@/components/urun-kimligi/ProductSummary";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useRouter } from "next/navigation";
 
@@ -17,7 +14,20 @@ interface BomItem {
   placement: string;
 }
 
-interface FormState {
+// Change the FormState interface to be exported:
+export interface FormState {
+  companyProductCategory: string | number | readonly string[] | undefined;
+  ecc: string | number | readonly string[] | undefined;
+  season: string | number | readonly string[] | undefined;
+  eccErpNo: string | number | readonly string[] | undefined;
+  brandDivision: string | number | readonly string[] | undefined;
+  styleNumber: string | number | readonly string[] | undefined;
+  genderSizeRange: string | number | readonly string[] | undefined;
+  mainCategory: string | number | readonly string[] | undefined;
+  basicSizeSpec: string | number | readonly string[] | undefined;
+  sizeRange: string | number | readonly string[] | undefined;
+  basicMeasTable: string | number | readonly string[] | undefined;
+  baseSize: string | number | readonly string[] | undefined;
   // Technical specs fields
   needleCount: string;
   diameter: string;
@@ -107,6 +117,20 @@ export default function CreateProductIdentityPage() {
 
   // Initialize form state with a generated style number
   const [formState, setFormState] = useState<FormState>({
+    // Required properties from FormState interface that were missing
+    companyProductCategory: "",
+    ecc: "",
+    season: "",
+    eccErpNo: "",
+    brandDivision: "",
+    styleNumber: "",
+    genderSizeRange: "",
+    mainCategory: "",
+    basicSizeSpec: "",
+    sizeRange: "",
+    basicMeasTable: "",
+    baseSize: "",
+    
     // Technical specs
     needleCount: "",
     diameter: "",
@@ -562,7 +586,7 @@ export default function CreateProductIdentityPage() {
         pdf.setFontSize(10);
         pdf.setTextColor(31, 41, 55);
         
-        formState.bomItems.forEach((item, index) => {
+        formState.bomItems.forEach((item) => {
           pdf.text("material", 22, y + 5);
           pdf.text(item.composition || "-", 62, y + 5);
           pdf.text(item.desc || "-", 102, y + 5);
@@ -588,7 +612,7 @@ export default function CreateProductIdentityPage() {
       
       // Loading technical drawing
       let techDrawingLoaded = false;
-      let techDrawImg = new Image();
+      const techDrawImg = new Image();
       techDrawImg.crossOrigin = "Anonymous";
       
       // Use full URL path to ensure the image loads correctly
@@ -619,7 +643,8 @@ export default function CreateProductIdentityPage() {
       const sizeCount = formState.activeSizes.length;
       
       // Dynamically determine layout based on number of sizes
-      let tableWidth, drawingWidth, drawingX, layoutType;
+      let tableWidth: number, drawingWidth: number, drawingX: number;
+      let layoutType: 'side-by-side' | 'stacked';
       
       // Calculate optimal table and drawing widths for better side-by-side alignment
       if (sizeCount <= 3) {
@@ -735,7 +760,7 @@ export default function CreateProductIdentityPage() {
       // Add table data
       let tableCurrentY = y; // Track current Y position in the table
       
-      measureTypes.forEach((measureType, idx) => {
+      measureTypes.forEach((measureType) => {
         // Check if we need a new page
         if (tableCurrentY + rowHeight > pageHeight - 20) {
           pdf.addPage();
@@ -1053,6 +1078,7 @@ Toe Closing: ${formState.toeClosing}`,
           const errorData = await response.json();
           console.error("API Error Response:", errorData);
           errorMessage = errorData.error || errorMessage;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (parseError) {
           // If response isn't valid JSON, try to get text
           const errorText = await response.text();
@@ -1299,7 +1325,7 @@ Toe Closing: ${formState.toeClosing}`,
                             className="p-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                              <path fillRule="evenodd" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                           </button>
                         </div>

@@ -1,22 +1,33 @@
 "use client";
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-interface User {
-  id: string;
+interface UserUpdateData {
   name: string;
   email: string;
   role: string;
   active: boolean;
-  lastLogin?: string;
+  password?: string;
 }
 
-export default function KullaniciDuzenlePage({ params }: { params: { id: string } }) {
+export default function KullaniciDuzenlePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  // Unwrap params using React.use()
-  const unwrappedParams = use(params);
-  const id = unwrappedParams.id;
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Extract ID from promise-based params
+  useEffect(() => {
+    const resolveParams = async () => {
+      try {
+        const resolvedParams = await params;
+        setUserId(resolvedParams.id);
+      } catch (error) {
+        console.error("Failed to resolve params:", error);
+      }
+    };
+
+    resolveParams();
+  }, [params]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -26,30 +37,32 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
     password: "",
     confirmPassword: "",
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [originalEmail, setOriginalEmail] = useState("");
   const [changePassword, setChangePassword] = useState(false);
-  
+
   useEffect(() => {
+    if (!userId) return;
+
     const fetchUser = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/users/${id}`);
-        
+        const response = await fetch(`/api/users/${userId}`);
+
         if (!response.ok) {
           if (response.status === 404) {
             setNotFound(true);
           }
           throw new Error(`Server yanıtı: ${response.status}`);
         }
-        
+
         const userData = await response.json();
-        
+
         setFormData({
           name: userData.name,
           email: userData.email,
@@ -58,51 +71,51 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
           password: "",
           confirmPassword: "",
         });
-        
+
         setOriginalEmail(userData.email);
         setLoading(false);
       } catch (err) {
-        console.error('Kullanıcı bilgileri yüklenirken hata:', err);
+        console.error("Kullanıcı bilgileri yüklenirken hata:", err);
         setLoading(false);
       }
     };
-    
+
     fetchUser();
-  }, [id]);
-  
+  }, [userId]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
-    
+
     // Clear error when field is edited
     if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = {...prev};
+      setErrors((prev) => {
+        const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
       });
     }
   };
-  
+
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
-    
+    const newErrors: { [key: string]: string } = {};
+
     // Name validation
     if (!formData.name.trim()) {
       newErrors.name = "Ad Soyad alanı zorunludur";
     }
-    
+
     // Email validation
     if (!formData.email.trim()) {
       newErrors.email = "E-posta alanı zorunludur";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Geçerli bir e-posta adresi girin";
     }
-    
+
     // Password validation (only if changing password)
     if (changePassword) {
       if (!formData.password) {
@@ -110,70 +123,69 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
       } else if (formData.password.length < 6) {
         newErrors.password = "Şifre en az 6 karakter olmalıdır";
       }
-      
+
       // Confirm password validation
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = "Şifreler eşleşmiyor";
       }
     }
-    
+
     // Role validation
     if (!formData.role) {
       newErrors.role = "Rol seçimi zorunludur";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
+
+    if (!validateForm() || !userId) {
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Prepare the update data
-      const updateData: any = {
+      const updateData: UserUpdateData = {
         name: formData.name,
         email: formData.email,
         role: formData.role,
-        active: formData.active
+        active: formData.active,
       };
-      
+
       // Only include password if changing
       if (changePassword && formData.password) {
         updateData.password = formData.password;
       }
-      
-      const response = await fetch(`/api/users/${id}`, {
-        method: 'PUT',
+
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(updateData),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Kullanıcı güncelleme başarısız oldu");
       }
-      
+
       setShowSuccess(true);
-      
+
       // Redirect after success message
       setTimeout(() => {
-        router.push('/kullanicilar');
+        router.push("/kullanicilar");
       }, 2000);
-      
     } catch (error) {
-      console.error('Error updating user:', error);
-      setErrors(prev => ({
+      console.error("Error updating user:", error);
+      setErrors((prev) => ({
         ...prev,
-        form: error instanceof Error ? error.message : "Bir hata oluştu. Lütfen tekrar deneyin."
+        form: error instanceof Error ? error.message : "Bir hata oluştu. Lütfen tekrar deneyin.",
       }));
       setIsSubmitting(false);
     }
@@ -198,13 +210,25 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
       <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div className="max-w-3xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-8 text-center">
-            <svg className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            <svg
+              className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+              />
             </svg>
             <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-2">Kullanıcı bulunamadı</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">Düzenlemeye çalıştığınız kullanıcı mevcut değil veya silinmiş.</p>
-            <Link 
-              href="/kullanicilar" 
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              Düzenlemeye çalıştığınız kullanıcı mevcut değil veya silinmiş.
+            </p>
+            <Link
+              href="/kullanicilar"
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
             >
               Kullanıcı Listesine Dön
@@ -214,7 +238,7 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
       </div>
     );
   }
-  
+
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Success message */}
@@ -223,13 +247,20 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
           <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-2xl max-w-md w-full mx-4 transform animate-fade-in">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 mb-4">
-                <svg className="h-10 w-10 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="h-10 w-10 text-green-600 dark:text-green-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">Kullanıcı Başarıyla Güncellendi!</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">
+                Kullanıcı Başarıyla Güncellendi!
+              </h3>
               <p className="text-gray-500 dark:text-gray-400 mb-6">Kullanıcı bilgileri güncellendi.</p>
-              
+
               <div className="flex justify-center">
                 <div className="bg-gray-100 dark:bg-gray-700 rounded-full h-2 w-64 overflow-hidden">
                   <div className="bg-green-500 h-2 rounded-full animate-progress-bar"></div>
@@ -242,12 +273,15 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
           </div>
         </div>
       )}
-      
+
       <div className="max-w-3xl mx-auto">
         <div className="mb-8 flex justify-between items-center">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Link href="/kullanicilar" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+              <Link
+                href="/kullanicilar"
+                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+              >
                 Kullanıcılar
               </Link>
               <span>/</span>
@@ -258,9 +292,9 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Kullanıcı Düzenle</h1>
             <p className="text-gray-500 dark:text-gray-400">Kullanıcı hesabını düzenleyin</p>
           </div>
-          
-          <Link 
-            href="/kullanicilar" 
+
+          <Link
+            href="/kullanicilar"
             className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <div className="flex items-center">
@@ -271,7 +305,7 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
             </div>
           </Link>
         </div>
-        
+
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-6">
           <form onSubmit={handleSubmit}>
             {errors.form && (
@@ -279,10 +313,13 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                 <p>{errors.form}</p>
               </div>
             )}
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   Ad Soyad
                 </label>
                 <input
@@ -292,7 +329,9 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                   value={formData.name}
                   onChange={handleChange}
                   className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                    errors.name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    errors.name
+                      ? "border-red-500 dark:border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
                   }`}
                   placeholder="Ad Soyad"
                 />
@@ -300,9 +339,12 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                   <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
                 )}
               </div>
-              
+
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   E-posta Adresi
                 </label>
                 <input
@@ -312,7 +354,9 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                   value={formData.email}
                   onChange={handleChange}
                   className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                    errors.email ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    errors.email
+                      ? "border-red-500 dark:border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
                   }`}
                   placeholder="ornek@mail.com"
                 />
@@ -325,9 +369,12 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                   </p>
                 )}
               </div>
-              
+
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="role"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   Kullanıcı Rolü
                 </label>
                 <select
@@ -336,7 +383,9 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                   value={formData.role}
                   onChange={handleChange}
                   className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                    errors.role ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    errors.role
+                      ? "border-red-500 dark:border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
                   }`}
                 >
                   <option value="Admin">Yönetici</option>
@@ -347,11 +396,11 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                   <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.role}</p>
                 )}
               </div>
-              
+
               <div className="flex items-center h-full pt-6">
                 <label className="inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     name="active"
                     checked={formData.active}
                     onChange={handleChange}
@@ -362,26 +411,32 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                 </label>
               </div>
             </div>
-            
+
             {/* Password Change Section */}
             <div className="mb-6">
               <div className="flex items-center mb-4">
-                <input 
+                <input
                   type="checkbox"
                   id="changePassword"
                   checked={changePassword}
                   onChange={(e) => setChangePassword(e.target.checked)}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
                 />
-                <label htmlFor="changePassword" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label
+                  htmlFor="changePassword"
+                  className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
                   Şifreyi Değiştir
                 </label>
               </div>
-              
+
               {changePassword && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
                   <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
                       Yeni Şifre
                     </label>
                     <input
@@ -391,7 +446,9 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                       value={formData.password}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                        errors.password ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        errors.password
+                          ? "border-red-500 dark:border-red-500"
+                          : "border-gray-300 dark:border-gray-600"
                       }`}
                       placeholder="••••••••"
                     />
@@ -399,9 +456,12 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>
                     )}
                   </div>
-                  
+
                   <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
                       Şifre Tekrar
                     </label>
                     <input
@@ -411,7 +471,9 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                        errors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        errors.confirmPassword
+                          ? "border-red-500 dark:border-red-500"
+                          : "border-gray-300 dark:border-gray-600"
                       }`}
                       placeholder="••••••••"
                     />
@@ -422,16 +484,16 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                 </div>
               )}
             </div>
-            
+
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
               <div className="flex justify-end gap-3">
-                <Link 
+                <Link
                   href="/kullanicilar"
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none transition-colors"
                 >
                   İptal
                 </Link>
-                
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -439,14 +501,29 @@ export default function KullaniciDuzenlePage({ params }: { params: { id: string 
                 >
                   {isSubmitting ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Kaydediliyor...
                     </>
                   ) : (
-                    'Değişiklikleri Kaydet'
+                    "Değişiklikleri Kaydet"
                   )}
                 </button>
               </div>

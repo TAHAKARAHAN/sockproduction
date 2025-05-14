@@ -2,12 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryDB } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
+// Define interface for user database row
+interface UserRow {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  active: boolean;
+  last_login?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// GET handler
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -30,16 +43,19 @@ export async function GET(
       );
     }
     
+    // Cast the row to UserRow type
+    const userRow = result.rows[0] as UserRow;
+    
     // Map column names to match the frontend expectations
     const user = {
-      id: result.rows[0].id,
-      name: result.rows[0].name,
-      email: result.rows[0].email,
-      role: result.rows[0].role,
-      active: result.rows[0].active,
-      lastLogin: result.rows[0].last_login,
-      createdAt: result.rows[0].created_at,
-      updatedAt: result.rows[0].updated_at
+      id: userRow.id,
+      name: userRow.name,
+      email: userRow.email,
+      role: userRow.role,
+      active: userRow.active,
+      lastLogin: userRow.last_login,
+      createdAt: userRow.created_at,
+      updatedAt: userRow.updated_at
     };
     
     return NextResponse.json(user);
@@ -55,10 +71,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -142,10 +158,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(

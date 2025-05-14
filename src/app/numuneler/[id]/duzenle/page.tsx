@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -23,15 +23,28 @@ interface NumuneFormData {
   toplamAgirlik: string;
 }
 
+// Update the Props type to use Promise
 type Props = {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default function NumuneEditPage({ params }: Props) {
   const router = useRouter();
-  // Unwrap params using React.use()
-  const unwrappedParams = use(params);
-  const id = unwrappedParams.id;
+  const [numuneId, setNumuneId] = useState<string | null>(null);
+
+  // Extract ID from promise-based params
+  useEffect(() => {
+    const resolveParams = async () => {
+      try {
+        const resolvedParams = await params;
+        setNumuneId(resolvedParams.id);
+      } catch (error) {
+        console.error("Failed to resolve params:", error);
+      }
+    };
+    
+    resolveParams();
+  }, [params]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -52,8 +65,8 @@ export default function NumuneEditPage({ params }: Props) {
 
   // Fetch data
   useEffect(() => {
-    // In a real app, you'd fetch data from an API
-    // For now, we'll simulate loading with demo data
+    if (!numuneId) return;
+
     const fetchData = async () => {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -90,7 +103,7 @@ export default function NumuneEditPage({ params }: Props) {
     };
     
     fetchData();
-  }, [id]);
+  }, [numuneId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -155,7 +168,7 @@ export default function NumuneEditPage({ params }: Props) {
       
       // Redirect after showing success message
       setTimeout(() => {
-        router.push(`/numuneler/${id}`);
+        router.push(`/numuneler/${numuneId}`);
       }, 2000);
     }, 800);
   };
@@ -207,8 +220,8 @@ export default function NumuneEditPage({ params }: Props) {
                 Numuneler
               </Link>
               <span>/</span>
-              <Link href={`/numuneler/${id}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                #{id}
+              <Link href={`/numuneler/${numuneId}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                #{numuneId}
               </Link>
               <span>/</span>
               <span>Düzenle</span>
@@ -218,7 +231,7 @@ export default function NumuneEditPage({ params }: Props) {
           </div>
           
           <Link 
-            href={`/numuneler/${id}`} 
+            href={`/numuneler/${numuneId}`} 
             className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <div className="flex items-center">
@@ -238,7 +251,7 @@ export default function NumuneEditPage({ params }: Props) {
                 <div className="text-2xl font-bold">NUMUNE</div>
               </div>
               <div className="text-lg font-medium">
-                #{id}
+                #{numuneId}
               </div>
             </div>
             
@@ -482,7 +495,7 @@ export default function NumuneEditPage({ params }: Props) {
 
           <div className="flex justify-end gap-4">
             <Link
-              href={`/numuneler/${id}`}
+              href={`/numuneler/${numuneId}`}
               className="px-5 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
             >
               İptal

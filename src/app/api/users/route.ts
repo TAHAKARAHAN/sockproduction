@@ -2,20 +2,36 @@ import { NextResponse } from 'next/server';
 import { queryDB } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
+// Define interface for user database row
+interface UserRow {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  active: boolean;
+  last_login?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export async function GET() {
   try {
     const query = `SELECT id, name, email, role, active, last_login FROM users ORDER BY name`;
     const result = await queryDB(query, []);
     
     // Map column names to match the frontend expectations
-    const users = result.rows.map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      active: user.active,
-      lastLogin: user.last_login
-    }));
+    const users = result.rows.map((user: unknown) => {
+      // Apply type assertion to the database row
+      const typedUser = user as UserRow;
+      return {
+        id: typedUser.id,
+        name: typedUser.name,
+        email: typedUser.email,
+        role: typedUser.role,
+        active: typedUser.active,
+        lastLogin: typedUser.last_login
+      };
+    });
     
     return NextResponse.json(users);
   } catch (error: any) {

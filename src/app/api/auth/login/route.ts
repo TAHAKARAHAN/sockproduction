@@ -3,6 +3,16 @@ import { sign } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { queryDB } from '@/lib/db';
 
+// Define interface for user from database
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  password_hash: string;
+  role: string;
+  active: boolean;
+}
+
 // JWT için gizli anahtarınız
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secure-jwt-secret-key-should-be-in-env';
 
@@ -30,7 +40,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const user = result.rows[0];
+    // Apply type to user from database result
+    const user = result.rows[0] as User;
     
     // Kullanıcı aktif değil
     if (!user.active) {

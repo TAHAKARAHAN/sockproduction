@@ -15,6 +15,17 @@ import {
 } from 'chart.js';
 import { Bar, Line, Pie, Doughnut } from 'react-chartjs-2';
 
+// Import chart data from the separate utility file
+import {
+  monthlyProductionData, 
+  salesByTypeData, 
+  qualityMetricsData, 
+  machineEfficiencyData,
+  initialReports,
+  typeColors,
+  ReportType
+} from '@/lib/report-data';
+
 // Register ChartJS components
 ChartJS.register(
   CategoryScale,
@@ -28,204 +39,8 @@ ChartJS.register(
   Legend
 );
 
-// Define report types specific to sock manufacturing
-type ReportType = 
-  | "Üretim" 
-  | "Satış" 
-  | "Stok" 
-  | "Kalite" 
-  | "Makine";
-
-// Sample chart data for sock production metrics
-const monthlyProductionData = {
-  labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'],
-  datasets: [
-    {
-      label: 'Erkek Çorap',
-      data: [12500, 13200, 14800, 13900, 15600, 16200],
-      backgroundColor: 'rgba(54, 162, 235, 0.5)',
-      borderColor: 'rgba(54, 162, 235, 1)',
-    },
-    {
-      label: 'Kadın Çorap',
-      data: [9800, 10500, 11200, 10800, 12100, 12700],
-      backgroundColor: 'rgba(255, 99, 132, 0.5)',
-      borderColor: 'rgba(255, 99, 132, 1)',
-    },
-    {
-      label: 'Çocuk Çorap',
-      data: [6500, 7200, 7800, 7400, 8300, 8900],
-      backgroundColor: 'rgba(255, 206, 86, 0.5)',
-      borderColor: 'rgba(255, 206, 86, 1)',
-    }
-  ]
-};
-
-// Sample chart data for sock sales by type
-const salesByTypeData = {
-  labels: ['Spor', 'Klasik', 'Patik', 'Desenli', 'Baskılı', 'Termal'],
-  datasets: [
-    {
-      label: 'Satış Adedi (bin)',
-      data: [45, 38, 27, 35, 22, 18],
-      backgroundColor: [
-        'rgba(54, 162, 235, 0.7)',
-        'rgba(255, 99, 132, 0.7)',
-        'rgba(255, 206, 86, 0.7)',
-        'rgba(75, 192, 192, 0.7)',
-        'rgba(153, 102, 255, 0.7)',
-        'rgba(255, 159, 64, 0.7)',
-      ],
-      borderWidth: 1,
-    },
-  ],
-};
-
-// Sample chart data for quality metrics
-const qualityMetricsData = {
-  labels: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs'],
-  datasets: [
-    {
-      label: 'Hatalı Ürün Oranı (%)',
-      data: [2.4, 2.1, 1.8, 1.5, 1.2],
-      borderColor: 'rgba(255, 99, 132, 1)',
-      tension: 0.4,
-      fill: false,
-    },
-    {
-      label: 'Kalite Skoru (100 üzerinden)',
-      data: [87, 89, 91, 92, 94],
-      borderColor: 'rgba(54, 162, 235, 1)',
-      tension: 0.4,
-      fill: false,
-    },
-  ],
-};
-
-// Sample chart data for machine efficiency
-const machineEfficiencyData = {
-  labels: ['Makine 1', 'Makine 2', 'Makine 3', 'Makine 4', 'Makine 5'],
-  datasets: [
-    {
-      label: 'Verimlilik (%)',
-      data: [85, 92, 78, 88, 90],
-      backgroundColor: [
-        'rgba(75, 192, 192, 0.7)',
-        'rgba(54, 162, 235, 0.7)',
-        'rgba(255, 206, 86, 0.7)',
-        'rgba(255, 99, 132, 0.7)',
-        'rgba(153, 102, 255, 0.7)',
-      ],
-      borderWidth: 1,
-    },
-  ],
-};
-
-// Sample data for sock manufacturing reports
-const initialReports = [
-  {
-    id: "R001",
-    title: "Aylık Çorap Üretim Özeti",
-    type: "Üretim" as ReportType,
-    createdDate: "01.05.2023",
-    period: "Mayıs 2023",
-    createdBy: "Üretim Müdürü",
-    downloadCount: 24,
-    lastAccess: "28.05.2023"
-  },
-  {
-    id: "R002",
-    title: "Çeyrek Bayii Satış Raporu",
-    type: "Satış" as ReportType,
-    createdDate: "15.04.2023",
-    period: "Q1 2023",
-    createdBy: "Satış Departmanı",
-    downloadCount: 18,
-    lastAccess: "10.05.2023"
-  },
-  {
-    id: "R003",
-    title: "İplik ve Aksesuar Stok Durumu",
-    type: "Stok" as ReportType,
-    createdDate: "20.05.2023",
-    period: "Mayıs 2023",
-    createdBy: "Depo Yönetimi",
-    downloadCount: 12,
-    lastAccess: "22.05.2023"
-  },
-  {
-    id: "R004",
-    title: "Çorap Maliyet Analizi",
-    type: "Üretim" as ReportType,
-    createdDate: "05.05.2023",
-    period: "Q2 2023",
-    createdBy: "Finans Departmanı",
-    downloadCount: 9,
-    lastAccess: "15.05.2023"
-  },
-  {
-    id: "R005",
-    title: "Çorap Makinesi Performans Raporu",
-    type: "Makine" as ReportType,
-    createdDate: "10.05.2023",
-    period: "Nisan 2023",
-    createdBy: "Teknik Departman",
-    downloadCount: 16,
-    lastAccess: "25.05.2023"
-  },
-  {
-    id: "R006",
-    title: "Çorap Modeli Satış Trend Analizi",
-    type: "Satış" as ReportType,
-    createdDate: "01.01.2023",
-    period: "2022",
-    createdBy: "Pazarlama",
-    downloadCount: 32,
-    lastAccess: "15.05.2023"
-  },
-  {
-    id: "R007",
-    title: "Çorap Kalite Kontrol Raporu",
-    type: "Kalite" as ReportType,
-    createdDate: "12.05.2023",
-    period: "Mayıs 2023",
-    createdBy: "Kalite Kontrol",
-    downloadCount: 21,
-    lastAccess: "20.05.2023"
-  },
-  {
-    id: "R008",
-    title: "Sezonluk Çorap Koleksiyon Performansı",
-    type: "Satış" as ReportType,
-    createdDate: "01.04.2023",
-    period: "Bahar 2023",
-    createdBy: "Ürün Yönetimi",
-    downloadCount: 27,
-    lastAccess: "18.05.2023"
-  }
-];
-
-// Type color mapping for visual indication - updated for sock manufacturing
-const typeColors = {
-  "Üretim": "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  "Satış": "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  "Stok": "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  "Kalite": "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
-  "Makine": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300"
-};
-
-// Export these for reuse in report detail page
-export { 
-  monthlyProductionData, 
-  salesByTypeData, 
-  qualityMetricsData, 
-  machineEfficiencyData,
-  initialReports,
-  typeColors 
-};
-
 export default function RaporlarPage() {
-  const [reports, setReports] = useState(initialReports);
+  const [reports] = useState(initialReports);
   const [filterType, setFilterType] = useState<ReportType | "">("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("createdDate");

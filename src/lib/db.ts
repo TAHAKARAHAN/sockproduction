@@ -1,6 +1,19 @@
+interface QueryResult {
+  rows: unknown[];
+  rowCount: number;
+}
+
+interface DbPool {
+  query(text: string, params: unknown[]): Promise<QueryResult>;
+}
+
+// Define a type for the Pool constructor
+type PoolConstructor = new (config: unknown) => unknown;
+
 // Only import Pool on the server side to prevent browser errors
-let Pool: any;
+let Pool: PoolConstructor | null = null;
 if (typeof window === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Pool: PgPool } = require('pg');
   Pool = PgPool;
 }
@@ -9,16 +22,16 @@ if (typeof window === 'undefined') {
 const isServer = typeof window === 'undefined';
 
 // Single database connection pool for both reads and writes
-let dbPool: any = null;
+let dbPool: DbPool | null = null;
 
-if (isServer) {
+if (isServer && Pool) {
   try {
     // Initialize the connection pool
     dbPool = new Pool({
       host: process.env.DB_HOST || 'sock-production-db-instance-1.cna0ueswg26s.us-east-1.rds.amazonaws.com',
       port: Number(process.env.DB_PORT) || 5432,
       user: process.env.DB_USER || 'sockdbadmin',
-      password: process.env.DB_PASSWORD || 'BEgZuL|~OUr2*waJ4MeNirO(~?12',
+      password: process.env.DB_PASSWORD || 'hAxZ[v|qe?!:Ibk_c2Y[LN1Uv_eO',
       database: process.env.DB_NAME || 'postgres',
       ssl: {
         rejectUnauthorized: false
@@ -27,7 +40,7 @@ if (isServer) {
       idleTimeoutMillis: 10000,
       max: 5,
       statement_timeout: 10000
-    });
+    }) as DbPool;
     
     console.log("[DB] Database connection pool initialized");
   } catch (err) {
@@ -36,7 +49,7 @@ if (isServer) {
 }
 
 // Execute database query with retry logic
-export async function queryDB(text: string, params: any[] = []) {
+export async function queryDB(text: string, params: unknown[] = []) {
   if (!isServer) {
     throw new Error("[DB] Database operations can only be performed on the server side");
   }
@@ -48,7 +61,7 @@ export async function queryDB(text: string, params: any[] = []) {
   const start = Date.now();
   try {
     console.log(`[DB] Executing query: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`);
-    const result = await dbPool.query(text, params);
+    const result = await dbPool!.query(text, params);
     const duration = Date.now() - start;
     console.log(`[DB] Executed query in ${duration}ms: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
     return result;
@@ -130,7 +143,7 @@ export async function createProductIdentity(data: Omit<ProductIdentity, 'id' | '
   );
   
   const duration = Date.now() - start;
-  console.log(`[DB] Created new product identity with ID: ${result.rows[0].id} in ${duration}ms`);
+  console.log(`[DB] Created new product identity with ID: ${(result.rows[0] as ProductIdentity).id} in ${duration}ms`);
   
   return result.rows[0] as ProductIdentity;
 }
@@ -192,14 +205,14 @@ export async function ensureProductionsTableHasNotlarColumn() {
       FROM information_schema.columns 
       WHERE table_name = 'productions' AND column_name = 'notlar'
     `;
-    const checkResult = await dbPool.query(checkQuery);
+    const checkResult = await dbPool!.query(checkQuery, []); // Added empty params array
     
     if (checkResult.rowCount === 0) {
       console.log('[DB] notlar column not found, adding it now...');
       
       // Add the column if it doesn't exist
       const alterQuery = `ALTER TABLE productions ADD COLUMN notlar TEXT`;
-      await dbPool.query(alterQuery);
+      await dbPool!.query(alterQuery, []); // Added empty params array
       
       console.log('[DB] Successfully added notlar column to productions table');
       return true;

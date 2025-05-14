@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getAllProductions, createProduction } from '@/lib/production-db';
+import { getAllProductions, createProduction, Production, ProductionStatus } from '@/lib/production-db';
 import { ensureProductionsTableHasNotlarColumn } from '@/lib/db';
-
 // Ensure the table has the required column
-let columnCheckPromise = ensureProductionsTableHasNotlarColumn();
+const columnCheckPromise = ensureProductionsTableHasNotlarColumn();
 
 /**
  * GET handler to fetch all productions with optional filters
@@ -36,7 +35,7 @@ export async function GET(request: Request) {
     console.log(`[API] GET /api/productions - Successfully fetched ${productions.length} productions in ${duration}ms`);
     
     return NextResponse.json(productions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     console.error(`[API] GET /api/productions - Failed after ${duration}ms:`, error);
     
@@ -64,16 +63,18 @@ export async function POST(request: Request) {
     console.log('[API] POST /api/productions - Received data:', JSON.stringify(data));
     
     // Extract values using multiple possible field names (handle both camelCase and snake_case)
-    const styleNo = data.styleNo || data.style_no || '';
+    // Fix the mapping for siparisNo → styleNo and artikelNo → siparisId
+    const styleNo = data.styleNo || data.style_no || data.siparisNo || '';
     const urunAdi = data.urunAdi || data.urun_adi || '';
-    const siparisId = data.siparisId || data.siparis_id || '';
+    const siparisId = data.siparisId || data.siparis_id || data.artikelNo || ''; 
     const musteri = data.musteri || '';
     const baslangicTarihi = data.baslangicTarihi || data.baslangic_tarihi || '';
     const tahminiTamamlanma = data.tahminiTamamlanma || data.tahmini_tamamlanma || '';
+    const productIdentityId = data.productIdentityId || null; // Extract productIdentityId
     
     // Debug the extracted values
     console.log('[API] Extracted values:', {
-      styleNo, urunAdi, siparisId, musteri, baslangicTarihi, tahminiTamamlanma
+      styleNo, urunAdi, siparisId, musteri, baslangicTarihi, tahminiTamamlanma, productIdentityId
     });
     
     // Validate required fields with more detailed logging
@@ -92,22 +93,29 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    
     // Convert the form data format to match our database schema
-    const productionData = {
+    const productionData: Omit<Production, 'id' | 'created_at' | 'updated_at' | 'tamamlanma' | 'durum'> & { 
+      durum?: ProductionStatus, 
+      tamamlanma?: number,
+      product_identity_id?: string | null  // Add this field to the type definition
+    } = {
       style_no: styleNo,
       urun_adi: urunAdi,
       siparis_id: siparisId,
       musteri: musteri,
-      miktar: Number(data.miktar || 0),
+      miktar: Number(data.adet || data.miktar || 0), // Prioritize data.adet from form, fallback to data.miktar
       baslangic_tarihi: baslangicTarihi,
       tahmini_tamamlanma: tahminiTamamlanma,
-      durum: data.durum || 'Burun Dikişi',
+      durum: data.durum || 'Üretim', // Change default status to 'Üretim' (translated as "Production" in Turkish)
       tamamlanma: Number(data.tamamlanma || 0),
-      notlar: data.notlar || null
+      notlar: data.notlar || ''  // Change null to empty string to avoid potential issues
     };
+
+    if (productIdentityId) {
+      productionData.product_identity_id = productIdentityId; // Add product_identity_id if available
+    }
     
-    console.log('[API] POST /api/productions - Processed data:', JSON.stringify(productionData));
+    console.log('[API] POST /api/productions - Processed data for DB:', JSON.stringify(productionData));
     
     // Create production
     const production = await createProduction(productionData);
@@ -116,12 +124,13 @@ export async function POST(request: Request) {
     console.log(`[API] POST /api/productions - Successfully created production with ID: ${production.id} in ${duration}ms`);
     
     return NextResponse.json(production, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     console.error(`[API] POST /api/productions - Failed after ${duration}ms:`, error);
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create production', details: error.message || 'Unknown error' },
+      { error: 'Failed to create production', details: errorMessage },
       { status: 500 }
     );
   }
